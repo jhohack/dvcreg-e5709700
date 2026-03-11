@@ -191,7 +191,7 @@ const Register = () => {
           {/* Academic */}
           <FormSection title="Academic Information" description="School and enrollment details" icon={<School className="h-4 w-4" />}>
             <div className="form-grid">
-              <SelectField label="Department" name="department" required options={departmentOptions} value={form.department} onChange={set("department")} />
+              <SelectField label="Department" name="department" required options={departmentOptions} value={form.department} onChange={set("department")} placeholder="Select your department" />
               {isSHS && (
                 <TextField label="Student LRN" name="student_lrn" value={form.student_lrn} onChange={set("student_lrn")} />
               )}
