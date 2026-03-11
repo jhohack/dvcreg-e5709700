@@ -153,27 +153,6 @@ const Register = () => {
             </div>
           </FormSection>
 
-          {/* Parent/Guardian */}
-          <FormSection title="Parent / Guardian" description="Primary and secondary guardian details" icon={<Users className="h-4 w-4" />}>
-            <div className="space-y-4">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Primary Guardian</p>
-              <div className="form-grid-2">
-                <TextField label="Full Name" name="parent_guardian" value={form.parent_guardian} onChange={set("parent_guardian")} />
-                <TextField label="Relation" name="parent_guardian_relation" value={form.parent_guardian_relation} onChange={set("parent_guardian_relation")} />
-                <TextField label="Address" name="parent_guardian_address" value={form.parent_guardian_address} onChange={set("parent_guardian_address")} />
-                <TextField label="Contact" name="parent_guardian_contact" type="tel" value={form.parent_guardian_contact} onChange={set("parent_guardian_contact")} />
-              </div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider pt-2">Secondary Guardian</p>
-              <div className="form-grid-2">
-                <TextField label="Full Name" name="sec_parent_guardian" value={form.sec_parent_guardian} onChange={set("sec_parent_guardian")} />
-                <TextField label="Relation" name="sec_parent_guardian_relation" value={form.sec_parent_guardian_relation} onChange={set("sec_parent_guardian_relation")} />
-                <TextField label="Address" name="sec_parent_guardian_address" value={form.sec_parent_guardian_address} onChange={set("sec_parent_guardian_address")} />
-                <TextField label="Contact" name="sec_parent_guardian_contact" type="tel" value={form.sec_parent_guardian_contact} onChange={set("sec_parent_guardian_contact")} />
-              </div>
-            </div>
-          </FormSection>
-
-          {/* Father */}
           <FormSection title="Father's Information" icon={<UserCheck className="h-4 w-4" />}>
             <div className="form-grid">
               <TextField label="First Name" name="father_first_name" value={form.father_first_name} onChange={set("father_first_name")} />
