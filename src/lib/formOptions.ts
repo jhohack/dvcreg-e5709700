@@ -43,7 +43,6 @@ export const vaccinationStatusOptions = [
 export const departmentOptions = [
   "College",
   "Senior High School",
-  "Graduate School",
 ];
 
 export const shsTrackOptions = [
