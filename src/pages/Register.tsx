@@ -42,8 +42,17 @@ const Register = () => {
 
   const set = (name: string) => (val: string) =>
     setForm((prev) => ({ ...prev, [name]: val }));
-  const setDate = (name: string) => (val: Date | undefined) =>
-    setForm((prev) => ({ ...prev, [name]: val }));
+  const setDate = (name: string) => (val: Date | undefined) => {
+    if (name === "date_of_birth" && val) {
+      const today = new Date();
+      let age = today.getFullYear() - val.getFullYear();
+      const m = today.getMonth() - val.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < val.getDate())) age--;
+      setForm((prev) => ({ ...prev, [name]: val, age: String(Math.max(0, age)) }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: val }));
+    }
+  };
 
   const showSpouse = ["Married", "Widowed", "Separated", "Divorced"].includes(form.civil_status);
   const showShsTrack = form.department === "Senior High School";
