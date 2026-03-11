@@ -158,7 +158,7 @@ const Register = () => {
               <TextField label="First Name" name="father_first_name" value={form.father_first_name} onChange={set("father_first_name")} />
               <TextField label="Middle Name" name="father_middle_name" value={form.father_middle_name} onChange={set("father_middle_name")} />
               <TextField label="Last Name" name="father_last_name" value={form.father_last_name} onChange={set("father_last_name")} />
-              <TextField label="Full Name" name="father_name" value={form.father_name} onChange={set("father_name")} />
+              
               <TextField label="Occupation" name="father_occupation" value={form.father_occupation} onChange={set("father_occupation")} />
               <TextField label="Contact" name="father_contact" type="tel" value={form.father_contact} onChange={set("father_contact")} />
             </div>
@@ -170,7 +170,7 @@ const Register = () => {
               <TextField label="First Name" name="mother_first_name" value={form.mother_first_name} onChange={set("mother_first_name")} />
               <TextField label="Middle Name" name="mother_middle_name" value={form.mother_middle_name} onChange={set("mother_middle_name")} />
               <TextField label="Last Name" name="mother_last_name" value={form.mother_last_name} onChange={set("mother_last_name")} />
-              <TextField label="Full Name" name="mother_name" value={form.mother_name} onChange={set("mother_name")} />
+              
               <TextField label="Occupation" name="mother_occupation" value={form.mother_occupation} onChange={set("mother_occupation")} />
               <TextField label="Contact" name="mother_contact" type="tel" value={form.mother_contact} onChange={set("mother_contact")} />
             </div>
