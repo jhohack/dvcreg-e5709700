@@ -43,7 +43,6 @@ export const vaccinationStatusOptions = [
 export const departmentOptions = [
   "College",
   "Senior High School",
-  "Graduate School",
 ];
 
 export const shsTrackOptions = [
@@ -60,19 +59,11 @@ export const shsTrackOptions = [
 ];
 
 export const courseOptions = [
-  "BS Information Technology",
-  "BS Computer Science",
-  "BS Education",
-  "BS Business Administration",
-  "BS Accountancy",
-  "BS Criminology",
-  "BS Nursing",
-  "BS Civil Engineering",
-  "BS Architecture",
-  "BS Psychology",
-  "BS Social Work",
-  "BS Agriculture",
-  "Other",
+  "BS Information Technology (BSIT)",
+  "Bachelor of Secondary Education – English (BSED-English)",
+  "Bachelor of Secondary Education – Math (BSED-Math)",
+  "Bachelor of Elementary Education (BEED)",
+  "Bachelor of Arts in Theology (AB Theology)",
 ];
 
 export const yearLevelOptions = [
@@ -95,7 +86,6 @@ export const collegeYearLevelOptions = [
   "2nd Year",
   "3rd Year",
   "4th Year",
-  "5th Year",
 ];
 
 export const parentMaritalStatusOptions = [
