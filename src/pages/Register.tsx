@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { GraduationCap, User, MapPin, UserCheck, Heart, DollarSign, School, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import FormSection from "@/components/registration/FormSection";
-import { TextField, SelectField, DateField } from "@/components/registration/FormField";
+import { TextField, SelectField, DateField, SchoolYearField } from "@/components/registration/FormField";
 import {
   genderOptions, civilStatusOptions, vaccinationStatusOptions,
   departmentOptions, shsTrackOptions, courseOptions, yearLevelOptions,
