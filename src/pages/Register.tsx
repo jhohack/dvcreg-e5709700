@@ -53,7 +53,8 @@ const Register = () => {
   };
 
   const showSpouse = ["Married", "Widowed", "Separated", "Divorced"].includes(form.civil_status);
-  const showShsTrack = form.department === "Senior High School";
+  const isSHS = form.department === "Senior High School";
+  const isCollege = form.department === "College";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
