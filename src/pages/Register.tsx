@@ -71,7 +71,7 @@ const Register = () => {
       ...rest,
       date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString().split("T")[0] : null,
       age: form.age ? parseInt(form.age) : null,
-      monthly_income: form.monthly_income ? parseFloat(form.monthly_income) : null,
+      monthly_income: form.monthly_income ? parseInt(form.monthly_income.replace(/,/g, "")) : null,
       shs_track: isSHS ? form.shs_track : null,
       spouse_name: showSpouse ? form.spouse_name : null,
       religion: form.religion === "Other" ? religion_other || "Other" : form.religion,
