@@ -10,7 +10,10 @@ import {
   departmentOptions, shsTrackOptions, courseOptions, yearLevelOptions,
   shsYearLevelOptions, collegeYearLevelOptions,
   parentMaritalStatusOptions, religionOptions, tribeOptions,
+  incomeSourceOptions, monthlyIncomeOptions,
 } from "@/lib/formOptions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { nationalityOptions } from "@/lib/nationalities";
 
 const initialForm = {
