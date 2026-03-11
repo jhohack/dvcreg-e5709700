@@ -85,6 +85,19 @@ export const yearLevelOptions = [
   "5th Year",
 ];
 
+export const shsYearLevelOptions = [
+  "Grade 11",
+  "Grade 12",
+];
+
+export const collegeYearLevelOptions = [
+  "1st Year",
+  "2nd Year",
+  "3rd Year",
+  "4th Year",
+  "5th Year",
+];
+
 export const parentMaritalStatusOptions = [
   "Married",
   "Living Together",

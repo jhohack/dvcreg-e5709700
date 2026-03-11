@@ -8,6 +8,7 @@ import { TextField, SelectField, DateField } from "@/components/registration/For
 import {
   genderOptions, civilStatusOptions, vaccinationStatusOptions,
   departmentOptions, shsTrackOptions, courseOptions, yearLevelOptions,
+  shsYearLevelOptions, collegeYearLevelOptions,
   parentMaritalStatusOptions, religionOptions, tribeOptions,
 } from "@/lib/formOptions";
 import { nationalityOptions } from "@/lib/nationalities";
@@ -52,7 +53,8 @@ const Register = () => {
   };
 
   const showSpouse = ["Married", "Widowed", "Separated", "Divorced"].includes(form.civil_status);
-  const showShsTrack = form.department === "Senior High School";
+  const isSHS = form.department === "Senior High School";
+  const isCollege = form.department === "College";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +69,7 @@ const Register = () => {
       date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString().split("T")[0] : null,
       age: form.age ? parseInt(form.age) : null,
       monthly_income: form.monthly_income ? parseFloat(form.monthly_income) : null,
-      shs_track: showShsTrack ? form.shs_track : null,
+      shs_track: isSHS ? form.shs_track : null,
       spouse_name: showSpouse ? form.spouse_name : null,
       religion: form.religion === "Other" ? religion_other || "Other" : form.religion,
       tribe: form.tribe === "Other" ? tribe_other || "Other" : form.tribe,
@@ -189,13 +191,23 @@ const Register = () => {
           {/* Academic */}
           <FormSection title="Academic Information" description="School and enrollment details" icon={<School className="h-4 w-4" />}>
             <div className="form-grid">
-              <TextField label="Student LRN" name="student_lrn" value={form.student_lrn} onChange={set("student_lrn")} />
               <SelectField label="Department" name="department" required options={departmentOptions} value={form.department} onChange={set("department")} />
-              {showShsTrack && (
-                <SelectField label="SHS Track" name="shs_track" options={shsTrackOptions} value={form.shs_track} onChange={set("shs_track")} />
+              {isSHS && (
+                <TextField label="Student LRN" name="student_lrn" value={form.student_lrn} onChange={set("student_lrn")} />
               )}
-              <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} />
-              <SelectField label="Year Level" name="year_level" required options={yearLevelOptions} value={form.year_level} onChange={set("year_level")} />
+              {isCollege && (
+                <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} />
+              )}
+              {(isSHS || isCollege) && (
+                <SelectField label="Year Level" name="year_level" required options={isSHS ? shsYearLevelOptions : collegeYearLevelOptions} value={form.year_level} onChange={set("year_level")} />
+              )}
+              {!isSHS && !isCollege && form.department && (
+                <>
+                  <SelectField label="Year Level" name="year_level" required options={yearLevelOptions} value={form.year_level} onChange={set("year_level")} />
+                  <TextField label="Student LRN" name="student_lrn" value={form.student_lrn} onChange={set("student_lrn")} />
+                  <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} />
+                </>
+              )}
             </div>
             <div className="mt-4 space-y-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Educational Background</p>
