@@ -115,3 +115,57 @@ export const DateField = ({
     </Popover>
   </div>
 );
+
+interface SchoolYearFieldProps extends BaseProps {
+  value: string;
+  onChange: (val: string) => void;
+}
+
+export const SchoolYearField = ({
+  label, name, required, value, className,
+  onChange,
+}: SchoolYearFieldProps) => {
+  // value stored as "YYYY-YYYY"
+  const parts = value ? value.split("-") : ["", ""];
+  const startYear = parts[0] || "";
+  const endYear = parts[1] || "";
+
+  const handleChange = (start: string, end: string) => {
+    const s = start.replace(/\D/g, "").slice(0, 4);
+    const e = end.replace(/\D/g, "").slice(0, 4);
+    onChange(s || e ? `${s}-${e}` : "");
+  };
+
+  return (
+    <div className={cn("space-y-1.5", className)}>
+      <Label htmlFor={name} className="text-sm font-medium text-foreground">
+        {label} {required && <span className="text-destructive">*</span>}
+      </Label>
+      <div className="flex items-center gap-2">
+        <Input
+          id={`${name}_start`}
+          name={`${name}_start`}
+          type="text"
+          inputMode="numeric"
+          maxLength={4}
+          value={startYear}
+          onChange={(e) => handleChange(e.target.value, endYear)}
+          placeholder="YYYY"
+          className="h-10 bg-background text-center"
+        />
+        <span className="text-muted-foreground font-medium">-</span>
+        <Input
+          id={`${name}_end`}
+          name={`${name}_end`}
+          type="text"
+          inputMode="numeric"
+          maxLength={4}
+          value={endYear}
+          onChange={(e) => handleChange(startYear, e.target.value)}
+          placeholder="YYYY"
+          className="h-10 bg-background text-center"
+        />
+      </div>
+    </div>
+  );
+};
