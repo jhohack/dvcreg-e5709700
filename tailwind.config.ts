@@ -12,8 +12,18 @@ export default {
         "2xl": "1400px",
       },
     },
+    fontFamily: {
+      heading: ['"Plus Jakarta Sans"', 'sans-serif'],
+      body: ['"DM Sans"', 'sans-serif'],
+    },
     extend: {
       colors: {
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        "section-header": "hsl(var(--section-header))",
+        "section-description": "hsl(var(--section-description))",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
