@@ -185,9 +185,31 @@ const Register = () => {
           <FormSection title="Family & Income" description="Financial information" icon={<DollarSign className="h-4 w-4" />}>
             <div className="form-grid-2">
               <SelectField label="Parents' Marital Status" name="parent_marital_status" options={parentMaritalStatusOptions} value={form.parent_marital_status} onChange={set("parent_marital_status")} />
-              <TextField label="Income Sources" name="income_sources" value={form.income_sources} onChange={set("income_sources")} />
-              <TextField label="Other Income" name="other_income" value={form.other_income} onChange={set("other_income")} />
-              <TextField label="Monthly Income" name="monthly_income" type="number" value={form.monthly_income} onChange={set("monthly_income")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-foreground">Sources of Income (check as many as applicable)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {incomeSourceOptions.map((src) => {
+                  const selected = form.income_sources.split(",").filter(Boolean);
+                  const checked = selected.includes(src);
+                  return (
+                    <label key={src} className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) => {
+                          const next = v ? [...selected, src] : selected.filter((s) => s !== src);
+                          set("income_sources")(next.join(","));
+                        }}
+                      />
+                      <span className="text-sm">{src}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="form-grid-2">
+              <TextField label="Other Sources of Income" name="other_income" value={form.other_income} onChange={set("other_income")} placeholder="Type here" />
+              <SelectField label="Ave. Monthly Income" name="monthly_income" options={monthlyIncomeOptions} value={form.monthly_income} onChange={set("monthly_income")} placeholder="Select monthly income" />
             </div>
           </FormSection>
 

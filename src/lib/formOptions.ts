@@ -96,6 +96,24 @@ export const parentMaritalStatusOptions = [
   "Widowed",
 ];
 
+export const incomeSourceOptions = [
+  "Business",
+  "Farming",
+  "Driving",
+  "Call Center Agent",
+  "Household Help",
+  "Salary As Employee",
+];
+
+export const monthlyIncomeOptions = [
+  "5,000-Below",
+  "6,000-10,000",
+  "11,000-15,000",
+  "16,000-20,000",
+  "21,000-25,000",
+  "26,000-Above",
+];
+
 export const tribeOptions = [
   "Tagalog",
   "Cebuano",
