@@ -8,7 +8,7 @@ import { TextField, SelectField, DateField } from "@/components/registration/For
 import {
   genderOptions, civilStatusOptions, vaccinationStatusOptions,
   departmentOptions, shsTrackOptions, courseOptions, yearLevelOptions,
-  parentMaritalStatusOptions,
+  parentMaritalStatusOptions, religionOptions,
 } from "@/lib/formOptions";
 import { nationalityOptions } from "@/lib/nationalities";
 
