@@ -220,7 +220,7 @@ const Register = () => {
                 <SchoolYearField label="School Year Attended" name="sec_year" value={form.sec_year} onChange={set("sec_year")} />
                 <TextField label="Last School Attended" name="last_school" value={form.last_school} onChange={set("last_school")} />
                 <TextField label="Last School Address" name="last_school_address" value={form.last_school_address} onChange={set("last_school_address")} />
-                <SchoolYearField label="School Year Attended" name="last_school_year" value={form.last_school_year} onChange={set("last_school_year")} />
+                <TextField label="School Year Attended" name="last_school_year" value={form.last_school_year} onChange={set("last_school_year")} placeholder="YYYY" />
               </div>
             </div>
           </FormSection>
