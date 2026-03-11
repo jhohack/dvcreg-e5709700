@@ -196,10 +196,10 @@ const Register = () => {
                 <TextField label="Student LRN" name="student_lrn" value={form.student_lrn} onChange={set("student_lrn")} />
               )}
               {isCollege && (
-                <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} />
+                <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} placeholder="Select your course" />
               )}
               {(isSHS || isCollege) && (
-                <SelectField label="Year Level" name="year_level" required options={isSHS ? shsYearLevelOptions : collegeYearLevelOptions} value={form.year_level} onChange={set("year_level")} />
+                <SelectField label="Year Level" name="year_level" required options={isSHS ? shsYearLevelOptions : collegeYearLevelOptions} value={form.year_level} onChange={set("year_level")} placeholder="Select your year level" />
               )}
               {!isSHS && !isCollege && form.department && (
                 <>
