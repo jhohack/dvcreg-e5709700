@@ -133,7 +133,13 @@ const Register = () => {
               )}
               <SelectField label="Nationality" name="nationality" options={nationalityOptions} value={form.nationality} onChange={set("nationality")} />
               <SelectField label="Religion" name="religion" options={religionOptions} value={form.religion} onChange={set("religion")} />
-              <TextField label="Tribe" name="tribe" value={form.tribe} onChange={set("tribe")} />
+              {form.religion === "Other" && (
+                <TextField label="Specify Religion" name="religion_other" value={form.religion_other} onChange={set("religion_other")} />
+              )}
+              <SelectField label="Tribe / Ethnicity" name="tribe" options={tribeOptions} value={form.tribe} onChange={set("tribe")} />
+              {form.tribe === "Other" && (
+                <TextField label="Specify Tribe" name="tribe_other" value={form.tribe_other} onChange={set("tribe_other")} />
+              )}
               <SelectField label="Vaccination Status" name="vaccination_status" options={vaccinationStatusOptions} value={form.vaccination_status} onChange={set("vaccination_status")} />
             </div>
           </FormSection>
