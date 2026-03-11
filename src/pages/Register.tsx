@@ -65,13 +65,16 @@ const Register = () => {
       return;
     }
     setLoading(true);
+    const { religion_other, tribe_other, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
       date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString().split("T")[0] : null,
       age: form.age ? parseInt(form.age) : null,
       monthly_income: form.monthly_income ? parseFloat(form.monthly_income) : null,
       shs_track: showShsTrack ? form.shs_track : null,
       spouse_name: showSpouse ? form.spouse_name : null,
+      religion: form.religion === "Other" ? religion_other || "Other" : form.religion,
+      tribe: form.tribe === "Other" ? tribe_other || "Other" : form.tribe,
     };
     const { error } = await supabase.from("student_information").insert([payload] as any);
     setLoading(false);
