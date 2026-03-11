@@ -86,7 +86,6 @@ export const collegeYearLevelOptions = [
   "2nd Year",
   "3rd Year",
   "4th Year",
-  "5th Year",
 ];
 
 export const parentMaritalStatusOptions = [
