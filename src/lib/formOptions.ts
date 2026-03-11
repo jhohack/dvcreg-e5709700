@@ -1,3 +1,29 @@
+export const religionOptions = [
+  "Roman Catholic",
+  "Islam",
+  "Iglesia ni Cristo",
+  "Evangelical Christian",
+  "Born Again Christian",
+  "Protestant",
+  "Seventh-day Adventist",
+  "Baptist",
+  "Methodist",
+  "Jehovah's Witness",
+  "Church of Christ",
+  "Latter-day Saints (Mormon)",
+  "Buddhism",
+  "Hinduism",
+  "Judaism",
+  "Aglipayan",
+  "Philippine Independent Church",
+  "Pentecostal",
+  "Assemblies of God",
+  "Bible Baptist",
+  "Indigenous / Tribal Religion",
+  "Non-religious / Atheist",
+  "Other",
+];
+
 export const genderOptions = ["Male", "Female", "Other"];
 
 export const civilStatusOptions = [
