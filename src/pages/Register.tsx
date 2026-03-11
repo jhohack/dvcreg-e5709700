@@ -10,6 +10,7 @@ import {
   departmentOptions, shsTrackOptions, courseOptions, yearLevelOptions,
   parentMaritalStatusOptions,
 } from "@/lib/formOptions";
+import { nationalityOptions } from "@/lib/nationalities";
 
 const initialForm = {
   first_name: "", last_name: "", middle_name: "",
