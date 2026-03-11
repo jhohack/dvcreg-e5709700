@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from "react"; // registration form
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { GraduationCap, User, MapPin, UserCheck, Heart, DollarSign, School, CheckCircle2 } from "lucide-react";
