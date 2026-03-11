@@ -16,7 +16,7 @@ const initialForm = {
   first_name: "", last_name: "", middle_name: "",
   date_of_birth: undefined as Date | undefined,
   age: "", place_of_birth: "", gender: "", civil_status: "",
-  spouse_name: "", nationality: "", religion: "", tribe: "",
+  spouse_name: "", nationality: "Filipino", religion: "", tribe: "",
   vaccination_status: "",
   address: "", current_address: "", contact: "", facebook_link: "",
   parent_guardian: "", parent_guardian_relation: "",
