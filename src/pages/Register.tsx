@@ -131,7 +131,7 @@ const Register = () => {
               {showSpouse && (
                 <TextField label="Spouse Name" name="spouse_name" value={form.spouse_name} onChange={set("spouse_name")} />
               )}
-              <TextField label="Nationality" name="nationality" value={form.nationality} onChange={set("nationality")} />
+              <SelectField label="Nationality" name="nationality" options={nationalityOptions} value={form.nationality} onChange={set("nationality")} />
               <TextField label="Religion" name="religion" value={form.religion} onChange={set("religion")} />
               <TextField label="Tribe" name="tribe" value={form.tribe} onChange={set("tribe")} />
               <SelectField label="Vaccination Status" name="vaccination_status" options={vaccinationStatusOptions} value={form.vaccination_status} onChange={set("vaccination_status")} />
