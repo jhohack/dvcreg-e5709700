@@ -170,7 +170,7 @@ const Register = () => {
               <TextField label="First Name" name="mother_first_name" value={form.mother_first_name} onChange={set("mother_first_name")} />
               <TextField label="Middle Name" name="mother_middle_name" value={form.mother_middle_name} onChange={set("mother_middle_name")} />
               <TextField label="Last Name" name="mother_last_name" value={form.mother_last_name} onChange={set("mother_last_name")} />
-              <TextField label="Full Name" name="mother_name" value={form.mother_name} onChange={set("mother_name")} />
+              
               <TextField label="Occupation" name="mother_occupation" value={form.mother_occupation} onChange={set("mother_occupation")} />
               <TextField label="Contact" name="mother_contact" type="tel" value={form.mother_contact} onChange={set("mother_contact")} />
             </div>
