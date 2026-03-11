@@ -191,13 +191,23 @@ const Register = () => {
           {/* Academic */}
           <FormSection title="Academic Information" description="School and enrollment details" icon={<School className="h-4 w-4" />}>
             <div className="form-grid">
-              <TextField label="Student LRN" name="student_lrn" value={form.student_lrn} onChange={set("student_lrn")} />
               <SelectField label="Department" name="department" required options={departmentOptions} value={form.department} onChange={set("department")} />
-              {showShsTrack && (
-                <SelectField label="SHS Track" name="shs_track" options={shsTrackOptions} value={form.shs_track} onChange={set("shs_track")} />
+              {isSHS && (
+                <TextField label="Student LRN" name="student_lrn" value={form.student_lrn} onChange={set("student_lrn")} />
               )}
-              <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} />
-              <SelectField label="Year Level" name="year_level" required options={yearLevelOptions} value={form.year_level} onChange={set("year_level")} />
+              {isCollege && (
+                <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} />
+              )}
+              {(isSHS || isCollege) && (
+                <SelectField label="Year Level" name="year_level" required options={isSHS ? shsYearLevelOptions : collegeYearLevelOptions} value={form.year_level} onChange={set("year_level")} />
+              )}
+              {!isSHS && !isCollege && form.department && (
+                <>
+                  <SelectField label="Year Level" name="year_level" required options={yearLevelOptions} value={form.year_level} onChange={set("year_level")} />
+                  <TextField label="Student LRN" name="student_lrn" value={form.student_lrn} onChange={set("student_lrn")} />
+                  <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} />
+                </>
+              )}
             </div>
             <div className="mt-4 space-y-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Educational Background</p>
