@@ -1,0 +1,68 @@
+export const genderOptions = ["Male", "Female", "Other"];
+
+export const civilStatusOptions = [
+  "Single",
+  "Married",
+  "Widowed",
+  "Separated",
+  "Divorced",
+];
+
+export const vaccinationStatusOptions = [
+  "Fully Vaccinated",
+  "Partially Vaccinated",
+  "Not Vaccinated",
+];
+
+export const departmentOptions = [
+  "College",
+  "Senior High School",
+  "Graduate School",
+];
+
+export const shsTrackOptions = [
+  "Academic Track - ABM",
+  "Academic Track - HUMSS",
+  "Academic Track - STEM",
+  "Academic Track - GAS",
+  "TVL Track - Home Economics",
+  "TVL Track - ICT",
+  "TVL Track - Industrial Arts",
+  "TVL Track - Agri-Fishery Arts",
+  "Sports Track",
+  "Arts and Design Track",
+];
+
+export const courseOptions = [
+  "BS Information Technology",
+  "BS Computer Science",
+  "BS Education",
+  "BS Business Administration",
+  "BS Accountancy",
+  "BS Criminology",
+  "BS Nursing",
+  "BS Civil Engineering",
+  "BS Architecture",
+  "BS Psychology",
+  "BS Social Work",
+  "BS Agriculture",
+  "Other",
+];
+
+export const yearLevelOptions = [
+  "Grade 11",
+  "Grade 12",
+  "1st Year",
+  "2nd Year",
+  "3rd Year",
+  "4th Year",
+  "5th Year",
+];
+
+export const parentMaritalStatusOptions = [
+  "Married",
+  "Living Together",
+  "Separated",
+  "Single Parent",
+  "Widowed",
+];
