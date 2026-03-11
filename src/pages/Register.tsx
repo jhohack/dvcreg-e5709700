@@ -8,7 +8,7 @@ import { TextField, SelectField, DateField } from "@/components/registration/For
 import {
   genderOptions, civilStatusOptions, vaccinationStatusOptions,
   departmentOptions, shsTrackOptions, courseOptions, yearLevelOptions,
-  parentMaritalStatusOptions, religionOptions,
+  parentMaritalStatusOptions, religionOptions, tribeOptions,
 } from "@/lib/formOptions";
 import { nationalityOptions } from "@/lib/nationalities";
 
@@ -16,7 +16,7 @@ const initialForm = {
   first_name: "", last_name: "", middle_name: "",
   date_of_birth: undefined as Date | undefined,
   age: "", place_of_birth: "", gender: "", civil_status: "",
-  spouse_name: "", nationality: "Filipino", religion: "", tribe: "",
+  spouse_name: "", nationality: "Filipino", religion: "", religion_other: "", tribe: "", tribe_other: "",
   vaccination_status: "",
   address: "", current_address: "", contact: "", facebook_link: "",
   parent_guardian: "", parent_guardian_relation: "",
@@ -65,13 +65,16 @@ const Register = () => {
       return;
     }
     setLoading(true);
+    const { religion_other, tribe_other, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
       date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString().split("T")[0] : null,
       age: form.age ? parseInt(form.age) : null,
       monthly_income: form.monthly_income ? parseFloat(form.monthly_income) : null,
       shs_track: showShsTrack ? form.shs_track : null,
       spouse_name: showSpouse ? form.spouse_name : null,
+      religion: form.religion === "Other" ? religion_other || "Other" : form.religion,
+      tribe: form.tribe === "Other" ? tribe_other || "Other" : form.tribe,
     };
     const { error } = await supabase.from("student_information").insert([payload] as any);
     setLoading(false);
@@ -133,7 +136,13 @@ const Register = () => {
               )}
               <SelectField label="Nationality" name="nationality" options={nationalityOptions} value={form.nationality} onChange={set("nationality")} />
               <SelectField label="Religion" name="religion" options={religionOptions} value={form.religion} onChange={set("religion")} />
-              <TextField label="Tribe" name="tribe" value={form.tribe} onChange={set("tribe")} />
+              {form.religion === "Other" && (
+                <TextField label="Specify Religion" name="religion_other" value={form.religion_other} onChange={set("religion_other")} />
+              )}
+              <SelectField label="Tribe / Ethnicity" name="tribe" options={tribeOptions} value={form.tribe} onChange={set("tribe")} />
+              {form.tribe === "Other" && (
+                <TextField label="Specify Tribe" name="tribe_other" value={form.tribe_other} onChange={set("tribe_other")} />
+              )}
               <SelectField label="Vaccination Status" name="vaccination_status" options={vaccinationStatusOptions} value={form.vaccination_status} onChange={set("vaccination_status")} />
             </div>
           </FormSection>
