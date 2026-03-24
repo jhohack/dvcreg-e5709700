@@ -126,26 +126,26 @@ const Register = () => {
           <FormSection title="Basic Information" description="Personal details of the student" icon={<User className="h-4 w-4" />}>
             <div className="form-grid">
               <TextField label="First Name" name="first_name" required value={form.first_name} onChange={set("first_name")} />
-              <TextField label="Middle Name" name="middle_name" value={form.middle_name} onChange={set("middle_name")} />
+              <TextField label="Middle Name" name="middle_name" required value={form.middle_name} onChange={set("middle_name")} />
               <TextField label="Last Name" name="last_name" required value={form.last_name} onChange={set("last_name")} />
-              <DateField label="Date of Birth" name="date_of_birth" value={form.date_of_birth} onChange={setDate("date_of_birth")} />
-              <TextField label="Age" name="age" type="number" value={form.age} onChange={set("age")} />
-              <TextField label="Place of Birth" name="place_of_birth" value={form.place_of_birth} onChange={set("place_of_birth")} />
+              <DateField label="Date of Birth" name="date_of_birth" required value={form.date_of_birth} onChange={setDate("date_of_birth")} />
+              <TextField label="Age" name="age" type="number" required value={form.age} onChange={set("age")} />
+              <TextField label="Place of Birth" name="place_of_birth" required value={form.place_of_birth} onChange={set("place_of_birth")} />
               <SelectField label="Gender" name="gender" required options={genderOptions} value={form.gender} onChange={set("gender")} />
-              <SelectField label="Civil Status" name="civil_status" options={civilStatusOptions} value={form.civil_status} onChange={set("civil_status")} />
+              <SelectField label="Civil Status" name="civil_status" required options={civilStatusOptions} value={form.civil_status} onChange={set("civil_status")} />
               {showSpouse && (
-                <TextField label="Spouse Name" name="spouse_name" value={form.spouse_name} onChange={set("spouse_name")} />
+                <TextField label="Spouse Name" name="spouse_name" required value={form.spouse_name} onChange={set("spouse_name")} />
               )}
-              <SelectField label="Nationality" name="nationality" options={nationalityOptions} value={form.nationality} onChange={set("nationality")} />
-              <SelectField label="Religion" name="religion" options={religionOptions} value={form.religion} onChange={set("religion")} />
+              <SelectField label="Nationality" name="nationality" required options={nationalityOptions} value={form.nationality} onChange={set("nationality")} />
+              <SelectField label="Religion" name="religion" required options={religionOptions} value={form.religion} onChange={set("religion")} />
               {form.religion === "Other" && (
-                <TextField label="Specify Religion" name="religion_other" value={form.religion_other} onChange={set("religion_other")} />
+                <TextField label="Specify Religion" name="religion_other" required value={form.religion_other} onChange={set("religion_other")} />
               )}
-              <SelectField label="Tribe / Ethnicity" name="tribe" options={tribeOptions} value={form.tribe} onChange={set("tribe")} />
+              <SelectField label="Tribe / Ethnicity" name="tribe" required options={tribeOptions} value={form.tribe} onChange={set("tribe")} />
               {form.tribe === "Other" && (
-                <TextField label="Specify Tribe" name="tribe_other" value={form.tribe_other} onChange={set("tribe_other")} />
+                <TextField label="Specify Tribe" name="tribe_other" required value={form.tribe_other} onChange={set("tribe_other")} />
               )}
-              <SelectField label="Vaccination Status" name="vaccination_status" options={vaccinationStatusOptions} value={form.vaccination_status} onChange={set("vaccination_status")} />
+              <SelectField label="Vaccination Status" name="vaccination_status" required options={vaccinationStatusOptions} value={form.vaccination_status} onChange={set("vaccination_status")} />
             </div>
           </FormSection>
 
