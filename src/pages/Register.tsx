@@ -126,69 +126,69 @@ const Register = () => {
           <FormSection title="Basic Information" description="Personal details of the student" icon={<User className="h-4 w-4" />}>
             <div className="form-grid">
               <TextField label="First Name" name="first_name" required value={form.first_name} onChange={set("first_name")} />
-              <TextField label="Middle Name" name="middle_name" value={form.middle_name} onChange={set("middle_name")} />
+              <TextField label="Middle Name" name="middle_name" required value={form.middle_name} onChange={set("middle_name")} />
               <TextField label="Last Name" name="last_name" required value={form.last_name} onChange={set("last_name")} />
-              <DateField label="Date of Birth" name="date_of_birth" value={form.date_of_birth} onChange={setDate("date_of_birth")} />
-              <TextField label="Age" name="age" type="number" value={form.age} onChange={set("age")} />
-              <TextField label="Place of Birth" name="place_of_birth" value={form.place_of_birth} onChange={set("place_of_birth")} />
+              <DateField label="Date of Birth" name="date_of_birth" required value={form.date_of_birth} onChange={setDate("date_of_birth")} />
+              <TextField label="Age" name="age" type="number" required value={form.age} onChange={set("age")} />
+              <TextField label="Place of Birth" name="place_of_birth" required value={form.place_of_birth} onChange={set("place_of_birth")} />
               <SelectField label="Gender" name="gender" required options={genderOptions} value={form.gender} onChange={set("gender")} />
-              <SelectField label="Civil Status" name="civil_status" options={civilStatusOptions} value={form.civil_status} onChange={set("civil_status")} />
+              <SelectField label="Civil Status" name="civil_status" required options={civilStatusOptions} value={form.civil_status} onChange={set("civil_status")} />
               {showSpouse && (
-                <TextField label="Spouse Name" name="spouse_name" value={form.spouse_name} onChange={set("spouse_name")} />
+                <TextField label="Spouse Name" name="spouse_name" required value={form.spouse_name} onChange={set("spouse_name")} />
               )}
-              <SelectField label="Nationality" name="nationality" options={nationalityOptions} value={form.nationality} onChange={set("nationality")} />
-              <SelectField label="Religion" name="religion" options={religionOptions} value={form.religion} onChange={set("religion")} />
+              <SelectField label="Nationality" name="nationality" required options={nationalityOptions} value={form.nationality} onChange={set("nationality")} />
+              <SelectField label="Religion" name="religion" required options={religionOptions} value={form.religion} onChange={set("religion")} />
               {form.religion === "Other" && (
-                <TextField label="Specify Religion" name="religion_other" value={form.religion_other} onChange={set("religion_other")} />
+                <TextField label="Specify Religion" name="religion_other" required value={form.religion_other} onChange={set("religion_other")} />
               )}
-              <SelectField label="Tribe / Ethnicity" name="tribe" options={tribeOptions} value={form.tribe} onChange={set("tribe")} />
+              <SelectField label="Tribe / Ethnicity" name="tribe" required options={tribeOptions} value={form.tribe} onChange={set("tribe")} />
               {form.tribe === "Other" && (
-                <TextField label="Specify Tribe" name="tribe_other" value={form.tribe_other} onChange={set("tribe_other")} />
+                <TextField label="Specify Tribe" name="tribe_other" required value={form.tribe_other} onChange={set("tribe_other")} />
               )}
-              <SelectField label="Vaccination Status" name="vaccination_status" options={vaccinationStatusOptions} value={form.vaccination_status} onChange={set("vaccination_status")} />
+              <SelectField label="Vaccination Status" name="vaccination_status" required options={vaccinationStatusOptions} value={form.vaccination_status} onChange={set("vaccination_status")} />
             </div>
           </FormSection>
 
           {/* Address & Contact */}
           <FormSection title="Address & Contact" description="Where we can reach you" icon={<MapPin className="h-4 w-4" />}>
             <div className="form-grid-2">
-              <TextField label="Permanent Address" name="address" value={form.address} onChange={set("address")} />
-              <TextField label="Current Address" name="current_address" value={form.current_address} onChange={set("current_address")} />
-              <TextField label="Contact Number" name="contact" type="tel" value={form.contact} onChange={set("contact")} />
-              <TextField label="Facebook Link" name="facebook_link" value={form.facebook_link} onChange={set("facebook_link")} />
+              <TextField label="Permanent Address" name="address" required value={form.address} onChange={set("address")} />
+              <TextField label="Current Address" name="current_address" required value={form.current_address} onChange={set("current_address")} />
+              <TextField label="Contact Number" name="contact" type="tel" required value={form.contact} onChange={set("contact")} />
+              <TextField label="Facebook Link" name="facebook_link" required value={form.facebook_link} onChange={set("facebook_link")} />
             </div>
           </FormSection>
 
           <FormSection title="Father's Information" icon={<UserCheck className="h-4 w-4" />}>
             <div className="form-grid">
-              <TextField label="First Name" name="father_first_name" value={form.father_first_name} onChange={set("father_first_name")} />
-              <TextField label="Middle Name" name="father_middle_name" value={form.father_middle_name} onChange={set("father_middle_name")} />
-              <TextField label="Last Name" name="father_last_name" value={form.father_last_name} onChange={set("father_last_name")} />
+              <TextField label="First Name" name="father_first_name" required value={form.father_first_name} onChange={set("father_first_name")} />
+              <TextField label="Middle Name" name="father_middle_name" required value={form.father_middle_name} onChange={set("father_middle_name")} />
+              <TextField label="Last Name" name="father_last_name" required value={form.father_last_name} onChange={set("father_last_name")} />
               
-              <TextField label="Occupation" name="father_occupation" value={form.father_occupation} onChange={set("father_occupation")} />
-              <TextField label="Contact" name="father_contact" type="tel" value={form.father_contact} onChange={set("father_contact")} />
+              <TextField label="Occupation" name="father_occupation" required value={form.father_occupation} onChange={set("father_occupation")} />
+              <TextField label="Contact" name="father_contact" type="tel" required value={form.father_contact} onChange={set("father_contact")} />
             </div>
           </FormSection>
 
           {/* Mother */}
           <FormSection title="Mother's Information" icon={<Heart className="h-4 w-4" />}>
             <div className="form-grid">
-              <TextField label="First Name" name="mother_first_name" value={form.mother_first_name} onChange={set("mother_first_name")} />
-              <TextField label="Middle Name" name="mother_middle_name" value={form.mother_middle_name} onChange={set("mother_middle_name")} />
-              <TextField label="Last Name" name="mother_last_name" value={form.mother_last_name} onChange={set("mother_last_name")} />
+              <TextField label="First Name" name="mother_first_name" required value={form.mother_first_name} onChange={set("mother_first_name")} />
+              <TextField label="Middle Name" name="mother_middle_name" required value={form.mother_middle_name} onChange={set("mother_middle_name")} />
+              <TextField label="Last Name" name="mother_last_name" required value={form.mother_last_name} onChange={set("mother_last_name")} />
               
-              <TextField label="Occupation" name="mother_occupation" value={form.mother_occupation} onChange={set("mother_occupation")} />
-              <TextField label="Contact" name="mother_contact" type="tel" value={form.mother_contact} onChange={set("mother_contact")} />
+              <TextField label="Occupation" name="mother_occupation" required value={form.mother_occupation} onChange={set("mother_occupation")} />
+              <TextField label="Contact" name="mother_contact" type="tel" required value={form.mother_contact} onChange={set("mother_contact")} />
             </div>
           </FormSection>
 
           {/* Family / Income */}
           <FormSection title="Family & Income" description="Financial information" icon={<DollarSign className="h-4 w-4" />}>
             <div className="form-grid-2">
-              <SelectField label="Parents' Marital Status" name="parent_marital_status" options={parentMaritalStatusOptions} value={form.parent_marital_status} onChange={set("parent_marital_status")} />
+              <SelectField label="Parents' Marital Status" name="parent_marital_status" required options={parentMaritalStatusOptions} value={form.parent_marital_status} onChange={set("parent_marital_status")} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-foreground">Sources of Income (check as many as applicable)</Label>
+              <Label className="text-sm font-medium text-foreground">Sources of Income (check as many as applicable) <span className="text-destructive">*</span></Label>
               <div className="grid grid-cols-2 gap-2">
                 {incomeSourceOptions.map((src) => {
                   const selected = form.income_sources.split(",").filter(Boolean);
@@ -210,7 +210,7 @@ const Register = () => {
             </div>
             <div className="form-grid-2">
               <TextField label="Other Sources of Income" name="other_income" value={form.other_income} onChange={set("other_income")} placeholder="Type here" />
-              <SelectField label="Ave. Monthly Income" name="monthly_income" options={monthlyIncomeOptions} value={form.monthly_income} onChange={set("monthly_income")} placeholder="Select monthly income" />
+              <SelectField label="Ave. Monthly Income" name="monthly_income" required options={monthlyIncomeOptions} value={form.monthly_income} onChange={set("monthly_income")} placeholder="Select monthly income" />
             </div>
           </FormSection>
 
@@ -239,7 +239,7 @@ const Register = () => {
                 />
               </div>
               {isCollege && (
-                <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} placeholder="Select your course" />
+                <SelectField label="Course" name="course" required options={courseOptions} value={form.course} onChange={set("course")} placeholder="Select your course" />
               )}
               {(isSHS || isCollege) && (
                 <SelectField label="Year Level" name="year_level" required options={isSHS ? shsYearLevelOptions : collegeYearLevelOptions} value={form.year_level} onChange={set("year_level")} placeholder="Select your year level" />
@@ -247,7 +247,7 @@ const Register = () => {
               {!isSHS && !isCollege && form.department && (
                 <>
                   <SelectField label="Year Level" name="year_level" required options={yearLevelOptions} value={form.year_level} onChange={set("year_level")} />
-                  <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} />
+                  <SelectField label="Course" name="course" required options={courseOptions} value={form.course} onChange={set("course")} />
                 </>
               )}
             </div>
@@ -256,27 +256,27 @@ const Register = () => {
               <div className="form-grid">
                 {isSHS && (
                   <>
-                    <TextField label="Elementary School" name="elem_school" value={form.elem_school} onChange={set("elem_school")} />
-                    <TextField label="Elem. Address" name="elem_address" value={form.elem_address} onChange={set("elem_address")} />
-                    <SchoolYearField label="School Year Attended" name="elem_year" value={form.elem_year} onChange={set("elem_year")} />
-                    <TextField label="Junior High School" name="sec_school" value={form.sec_school} onChange={set("sec_school")} />
-                    <TextField label="Jr. High Address" name="sec_address" value={form.sec_address} onChange={set("sec_address")} />
-                    <SchoolYearField label="School Year Attended" name="sec_year" value={form.sec_year} onChange={set("sec_year")} />
+                    <TextField label="Elementary School" name="elem_school" required value={form.elem_school} onChange={set("elem_school")} />
+                    <TextField label="Elem. Address" name="elem_address" required value={form.elem_address} onChange={set("elem_address")} />
+                    <SchoolYearField label="School Year Attended" name="elem_year" required value={form.elem_year} onChange={set("elem_year")} />
+                    <TextField label="Junior High School" name="sec_school" required value={form.sec_school} onChange={set("sec_school")} />
+                    <TextField label="Jr. High Address" name="sec_address" required value={form.sec_address} onChange={set("sec_address")} />
+                    <SchoolYearField label="School Year Attended" name="sec_year" required value={form.sec_year} onChange={set("sec_year")} />
                   </>
                 )}
                 {isCollege && (
                   <>
-                    <TextField label="Junior High School" name="elem_school" value={form.elem_school} onChange={set("elem_school")} />
-                    <TextField label="Jr. High Address" name="elem_address" value={form.elem_address} onChange={set("elem_address")} />
-                    <SchoolYearField label="School Year Attended" name="elem_year" value={form.elem_year} onChange={set("elem_year")} />
-                    <TextField label="Senior High School" name="sec_school" value={form.sec_school} onChange={set("sec_school")} />
-                    <TextField label="Sr. High Address" name="sec_address" value={form.sec_address} onChange={set("sec_address")} />
-                    <SchoolYearField label="School Year Attended" name="sec_year" value={form.sec_year} onChange={set("sec_year")} />
+                    <TextField label="Junior High School" name="elem_school" required value={form.elem_school} onChange={set("elem_school")} />
+                    <TextField label="Jr. High Address" name="elem_address" required value={form.elem_address} onChange={set("elem_address")} />
+                    <SchoolYearField label="School Year Attended" name="elem_year" required value={form.elem_year} onChange={set("elem_year")} />
+                    <TextField label="Senior High School" name="sec_school" required value={form.sec_school} onChange={set("sec_school")} />
+                    <TextField label="Sr. High Address" name="sec_address" required value={form.sec_address} onChange={set("sec_address")} />
+                    <SchoolYearField label="School Year Attended" name="sec_year" required value={form.sec_year} onChange={set("sec_year")} />
                   </>
                 )}
-                <TextField label="Last School Attended" name="last_school" value={form.last_school} onChange={set("last_school")} />
-                <TextField label="Last School Address" name="last_school_address" value={form.last_school_address} onChange={set("last_school_address")} />
-                <TextField label="School Year Attended" name="last_school_year" value={form.last_school_year} onChange={set("last_school_year")} placeholder="YYYY" />
+                <TextField label="Last School Attended" name="last_school" required value={form.last_school} onChange={set("last_school")} />
+                <TextField label="Last School Address" name="last_school_address" required value={form.last_school_address} onChange={set("last_school_address")} />
+                <TextField label="School Year Attended" name="last_school_year" required value={form.last_school_year} onChange={set("last_school_year")} placeholder="YYYY" />
               </div>
             </div>
           </FormSection>
