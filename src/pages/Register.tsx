@@ -242,7 +242,13 @@ const Register = () => {
                 <SelectField label="Course" name="course" required options={courseOptions} value={form.course} onChange={set("course")} placeholder="Select your course" />
               )}
               {(isSHS || isCollege) && (
-                <SelectField label={isSHS ? "Grade Level" : "Year Level"} name="year_level" required options={isSHS ? shsYearLevelOptions : collegeYearLevelOptions} value={form.year_level} onChange={set("year_level")} placeholder={isSHS ? "Select your grade level" : "Select your year level"} />
+                <SelectField label={isSHS ? "Grade Level" : "Year Level"} name="year_level" required options={isSHS ? shsYearLevelOptions : collegeYearLevelOptions} value={form.year_level} onChange={(val) => { set("year_level")(val); set("shs_track")(""); }} placeholder={isSHS ? "Select your grade level" : "Select your year level"} />
+              )}
+              {isSHS && form.year_level === "Grade 11" && (
+                <SelectField label="Strand" name="shs_track" required options={["Academic Track", "Tech Pro Track"]} value={form.shs_track} onChange={set("shs_track")} placeholder="Select your strand" />
+              )}
+              {isSHS && form.year_level === "Grade 12" && (
+                <SelectField label="Strand" name="shs_track" required options={["HUMSS", "STEM", "ABM", "ICT", "GAS"]} value={form.shs_track} onChange={set("shs_track")} placeholder="Select your strand" />
               )}
               {!isSHS && !isCollege && form.department && (
                 <>
