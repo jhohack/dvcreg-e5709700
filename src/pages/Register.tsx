@@ -217,9 +217,26 @@ const Register = () => {
           <FormSection title="Academic Information" description="School and enrollment details" icon={<School className="h-4 w-4" />}>
             <div className="form-grid">
               <SelectField label="Department" name="department" required options={departmentOptions} value={form.department} onChange={set("department")} placeholder="Select your department" />
-              {isSHS && (
-                <TextField label="Student LRN" name="student_lrn" value={form.student_lrn} onChange={set("student_lrn")} />
-              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="student_lrn" className="text-sm font-medium text-foreground">
+                  LRN <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="student_lrn"
+                  name="student_lrn"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={12}
+                  value={form.student_lrn}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 12);
+                    set("student_lrn")(val);
+                  }}
+                  placeholder="12-digit LRN"
+                  required
+                  className="h-10 bg-background"
+                />
+              </div>
               {isCollege && (
                 <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} placeholder="Select your course" />
               )}
@@ -229,7 +246,6 @@ const Register = () => {
               {!isSHS && !isCollege && form.department && (
                 <>
                   <SelectField label="Year Level" name="year_level" required options={yearLevelOptions} value={form.year_level} onChange={set("year_level")} />
-                  <TextField label="Student LRN" name="student_lrn" value={form.student_lrn} onChange={set("student_lrn")} />
                   <SelectField label="Course" name="course" options={courseOptions} value={form.course} onChange={set("course")} />
                 </>
               )}
