@@ -242,7 +242,7 @@ const Register = () => {
                 <SelectField label="Course" name="course" required options={courseOptions} value={form.course} onChange={set("course")} placeholder="Select your course" />
               )}
               {(isSHS || isCollege) && (
-                <SelectField label="Year Level" name="year_level" required options={isSHS ? shsYearLevelOptions : collegeYearLevelOptions} value={form.year_level} onChange={set("year_level")} placeholder="Select your year level" />
+                <SelectField label={isSHS ? "Grade Level" : "Year Level"} name="year_level" required options={isSHS ? shsYearLevelOptions : collegeYearLevelOptions} value={form.year_level} onChange={set("year_level")} placeholder={isSHS ? "Select your grade level" : "Select your year level"} />
               )}
               {!isSHS && !isCollege && form.department && (
                 <>
