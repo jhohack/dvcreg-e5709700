@@ -161,12 +161,12 @@ const Register = () => {
 
           <FormSection title="Father's Information" icon={<UserCheck className="h-4 w-4" />}>
             <div className="form-grid">
-              <TextField label="First Name" name="father_first_name" value={form.father_first_name} onChange={set("father_first_name")} />
-              <TextField label="Middle Name" name="father_middle_name" value={form.father_middle_name} onChange={set("father_middle_name")} />
-              <TextField label="Last Name" name="father_last_name" value={form.father_last_name} onChange={set("father_last_name")} />
+              <TextField label="First Name" name="father_first_name" required value={form.father_first_name} onChange={set("father_first_name")} />
+              <TextField label="Middle Name" name="father_middle_name" required value={form.father_middle_name} onChange={set("father_middle_name")} />
+              <TextField label="Last Name" name="father_last_name" required value={form.father_last_name} onChange={set("father_last_name")} />
               
-              <TextField label="Occupation" name="father_occupation" value={form.father_occupation} onChange={set("father_occupation")} />
-              <TextField label="Contact" name="father_contact" type="tel" value={form.father_contact} onChange={set("father_contact")} />
+              <TextField label="Occupation" name="father_occupation" required value={form.father_occupation} onChange={set("father_occupation")} />
+              <TextField label="Contact" name="father_contact" type="tel" required value={form.father_contact} onChange={set("father_contact")} />
             </div>
           </FormSection>
 
