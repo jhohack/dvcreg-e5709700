@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { GraduationCap, User, MapPin, UserCheck, Heart, DollarSign, School, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import FormSection from "@/components/registration/FormSection";
 import { TextField, SelectField, DateField, SchoolYearField } from "@/components/registration/FormField";
 import {
