@@ -152,10 +152,10 @@ const Register = () => {
           {/* Address & Contact */}
           <FormSection title="Address & Contact" description="Where we can reach you" icon={<MapPin className="h-4 w-4" />}>
             <div className="form-grid-2">
-              <TextField label="Permanent Address" name="address" value={form.address} onChange={set("address")} />
-              <TextField label="Current Address" name="current_address" value={form.current_address} onChange={set("current_address")} />
-              <TextField label="Contact Number" name="contact" type="tel" value={form.contact} onChange={set("contact")} />
-              <TextField label="Facebook Link" name="facebook_link" value={form.facebook_link} onChange={set("facebook_link")} />
+              <TextField label="Permanent Address" name="address" required value={form.address} onChange={set("address")} />
+              <TextField label="Current Address" name="current_address" required value={form.current_address} onChange={set("current_address")} />
+              <TextField label="Contact Number" name="contact" type="tel" required value={form.contact} onChange={set("contact")} />
+              <TextField label="Facebook Link" name="facebook_link" required value={form.facebook_link} onChange={set("facebook_link")} />
             </div>
           </FormSection>
 
