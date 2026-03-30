@@ -67,7 +67,7 @@ const AdminRecords = () => {
   const fetchStudents = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from("student_information")
+      .from("admission")
       .select("*")
       .order("date_created", { ascending: false }) as any;
     if (!error && data) setStudents(data);

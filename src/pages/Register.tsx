@@ -1,5 +1,6 @@
 import { useState } from "react"; // registration form
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { GraduationCap, User, MapPin, UserCheck, Heart, DollarSign, School, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,7 @@ const Register = () => {
     }
     setLoading(true);
     const { religion_other, tribe_other, ...rest } = form;
-    const payload = {
+    const payload: TablesInsert<"admission"> = {
       ...rest,
       date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString().split("T")[0] : null,
       age: form.age ? parseInt(form.age) : null,
@@ -78,7 +79,7 @@ const Register = () => {
       religion: form.religion === "Other" ? religion_other || "Other" : form.religion,
       tribe: form.tribe === "Other" ? tribe_other || "Other" : form.tribe,
     };
-    const { error } = await supabase.from("student_information").insert([payload] as any);
+    const { error } = await supabase.from("admission").insert([payload]);
     setLoading(false);
     if (error) {
       toast.error("Registration failed. Please try again.");
