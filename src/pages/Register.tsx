@@ -71,13 +71,25 @@ const Register = () => {
   const isSHS = selectedEducationLevel === "shs";
   const isCollege = selectedEducationLevel === "college";
   const educationLevelOptions = academicCatalogQuery.data?.educationLevels ?? [];
-  const availablePrograms = selectedEducationLevel
+  const programsForEducationLevel = selectedEducationLevel
     ? academicCatalogQuery.data?.programsByEducationLevel[selectedEducationLevel] ?? []
     : [];
-  const selectedProgram = availablePrograms.find((program) => program.value === form.program);
-  const availableLevels = selectedProgram
-    ? academicCatalogQuery.data?.levelsByProgramId[selectedProgram.id] ?? []
+  const availableShsLevels = isSHS
+    ? academicCatalogQuery.data?.levelsByEducationLevel[selectedEducationLevel] ?? []
     : [];
+  const availablePrograms = isSHS
+    ? programsForEducationLevel.filter((program) =>
+        form.level
+          ? (academicCatalogQuery.data?.levelsByProgramId[program.id] ?? []).includes(form.level)
+          : false
+      )
+    : programsForEducationLevel;
+  const selectedProgram = programsForEducationLevel.find((program) => program.value === form.program);
+  const availableLevels = isSHS
+    ? availableShsLevels
+    : selectedProgram
+      ? academicCatalogQuery.data?.levelsByProgramId[selectedProgram.id] ?? []
+      : [];
 
   const setEducationLevel = (value: string) =>
     setForm((prev) => ({
@@ -95,16 +107,19 @@ const Register = () => {
     setForm((prev) => ({
       ...prev,
       program: value,
-      level: "",
+      level: isSHS ? prev.level : "",
       course: selectedEducationLevel === "college" ? value : "",
       shs_track: selectedEducationLevel === "shs" ? value : "",
-      year_level: "",
+      year_level: isSHS ? prev.year_level : "",
     }));
 
   const setLevel = (value: string) =>
     setForm((prev) => ({
       ...prev,
       level: value,
+      program: isSHS ? "" : prev.program,
+      course: isSHS ? "" : prev.course,
+      shs_track: isSHS ? "" : prev.shs_track,
       year_level: value,
     }));
 
@@ -325,7 +340,18 @@ const Register = () => {
                   className="h-10 bg-background"
                 />
               </div>
-              {selectedEducationLevel && (
+              {isSHS && (
+                <SelectField
+                  label="Level"
+                  name="level"
+                  required
+                  options={availableLevels}
+                  value={form.level}
+                  onChange={setLevel}
+                  placeholder="Select your level"
+                />
+              )}
+              {selectedEducationLevel && (!isSHS || !!form.level) && (
                 <SelectField
                   label="Program"
                   name="program"
@@ -333,10 +359,14 @@ const Register = () => {
                   options={availablePrograms}
                   value={form.program}
                   onChange={setProgram}
-                  placeholder={academicCatalogQuery.isLoading ? "Loading programs..." : "Select your program"}
+                  placeholder={
+                    academicCatalogQuery.isLoading
+                      ? "Loading programs..."
+                      : "Select your program"
+                  }
                 />
               )}
-              {selectedEducationLevel && (
+              {selectedEducationLevel && !isSHS && (
                 <SelectField
                   label="Level"
                   name="level"

@@ -15,6 +15,7 @@ export interface AcademicCatalog {
   educationLevels: SelectOption[];
   programs: ProgramOption[];
   programsByEducationLevel: Record<string, ProgramOption[]>;
+  levelsByEducationLevel: Record<string, string[]>;
   levelsByProgramId: Record<string, string[]>;
 }
 
@@ -93,6 +94,12 @@ export const fetchAcademicCatalog = async (): Promise<AcademicCatalog> => {
     throw levelError;
   }
 
+  const programEducationLevelById = (programRows ?? []).reduce<Record<string, string>>((acc, row) => {
+    const typedRow = row as Pick<SystemProgram, "id" | "education_level">;
+    acc[typedRow.id] = normalizeEducationLevel(typedRow.education_level);
+    return acc;
+  }, {});
+
   const levelsByProgramId = (levelRows ?? []).reduce<Record<string, string[]>>((acc, row) => {
     const typedRow = row as Pick<SystemProgramLevel, "program_id" | "level_name">;
 
@@ -101,6 +108,26 @@ export const fetchAcademicCatalog = async (): Promise<AcademicCatalog> => {
     }
 
     acc[typedRow.program_id].push(typedRow.level_name);
+    return acc;
+  }, {});
+
+  const levelSortOrderByEducationLevel = (levelRows ?? []).reduce<Record<string, Record<string, number>>>((acc, row) => {
+    const typedRow = row as Pick<SystemProgramLevel, "program_id" | "level_name" | "sort_order">;
+    const educationLevel = programEducationLevelById[typedRow.program_id];
+
+    if (!educationLevel) {
+      return acc;
+    }
+
+    if (!acc[educationLevel]) {
+      acc[educationLevel] = {};
+    }
+
+    const currentSortOrder = acc[educationLevel][typedRow.level_name];
+    acc[educationLevel][typedRow.level_name] = currentSortOrder === undefined
+      ? typedRow.sort_order
+      : Math.min(currentSortOrder, typedRow.sort_order);
+
     return acc;
   }, {});
 
@@ -133,10 +160,19 @@ export const fetchAcademicCatalog = async (): Promise<AcademicCatalog> => {
     return acc;
   }, {});
 
+  const levelsByEducationLevel = Object.entries(levelSortOrderByEducationLevel).reduce<Record<string, string[]>>((acc, [educationLevel, sortOrders]) => {
+    acc[educationLevel] = Object.entries(sortOrders)
+      .sort(([leftLevel, leftOrder], [rightLevel, rightOrder]) => leftOrder - rightOrder || leftLevel.localeCompare(rightLevel))
+      .map(([levelName]) => levelName);
+
+    return acc;
+  }, {});
+
   return {
     educationLevels,
     programs,
     programsByEducationLevel,
+    levelsByEducationLevel,
     levelsByProgramId,
   };
 };
