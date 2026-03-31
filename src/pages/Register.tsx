@@ -168,8 +168,13 @@ const Register = () => {
     };
 
     let { error } = await supabase.from("admission").insert([payload]);
+    const isMissingAcademicColumnError = !!error && (
+      error.code === "PGRST204" ||
+      /column admission\.(education_level|program|level) does not exist/i.test(error.message) ||
+      /could not find the '(education_level|program|level)' column of 'admission' in the schema cache/i.test(error.message)
+    );
 
-    if (error && /column admission\.(education_level|program|level) does not exist/i.test(error.message)) {
+    if (isMissingAcademicColumnError) {
       ({ error } = await supabase.from("admission").insert([legacyPayload]));
     }
 
