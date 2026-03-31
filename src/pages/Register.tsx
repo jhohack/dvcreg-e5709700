@@ -160,7 +160,6 @@ const Register = () => {
       tribe: form.tribe === "Other" ? tribe_other || "Other" : form.tribe,
     };
 
-<<<<<<< HEAD
     const payload: TablesInsert<"admission"> = {
       ...legacyPayload,
       education_level: selectedEducationLevel || null,
@@ -178,9 +177,6 @@ const Register = () => {
     if (isMissingAcademicColumnError) {
       ({ error } = await supabase.from("admission").insert([legacyPayload]));
     }
-=======
-    const { error } = await supabase.from("admission").insert([legacyPayload]);
->>>>>>> d06a84a1d905535aefb06188dc18289d51e2f96c
 
     setLoading(false);
     if (error) {
