@@ -160,18 +160,7 @@ const Register = () => {
       tribe: form.tribe === "Other" ? tribe_other || "Other" : form.tribe,
     };
 
-    const payload: TablesInsert<"admission"> = {
-      ...legacyPayload,
-      education_level: selectedEducationLevel || null,
-      program: form.program || null,
-      level: form.level || null,
-    };
-
-    let { error } = await supabase.from("admission").insert([payload]);
-
-    if (error && /column admission\.(education_level|program|level) does not exist/i.test(error.message)) {
-      ({ error } = await supabase.from("admission").insert([legacyPayload]));
-    }
+    const { error } = await supabase.from("admission").insert([legacyPayload]);
 
     setLoading(false);
     if (error) {
