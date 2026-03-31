@@ -1,4 +1,5 @@
 import { useState } from "react"; // registration form
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -10,13 +11,16 @@ import FormSection from "@/components/registration/FormSection";
 import { TextField, SelectField, DateField, SchoolYearField } from "@/components/registration/FormField";
 import {
   genderOptions, civilStatusOptions, vaccinationStatusOptions,
-  departmentOptions, shsTrackOptions, courseOptions, yearLevelOptions,
-  shsYearLevelOptions, collegeYearLevelOptions,
   parentMaritalStatusOptions, religionOptions, tribeOptions,
   incomeSourceOptions, monthlyIncomeOptions,
 } from "@/lib/formOptions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { nationalityOptions } from "@/lib/nationalities";
+import {
+  fetchAcademicCatalog,
+  getLegacyDepartmentLabel,
+  normalizeEducationLevel,
+} from "@/lib/academicCatalog";
 
 const initialForm = {
   first_name: "", last_name: "", middle_name: "",
@@ -31,17 +35,22 @@ const initialForm = {
   mother_name: "", mother_occupation: "", mother_contact: "",
   parent_marital_status: "", income_sources: "", other_income: "",
   monthly_income: "",
-  student_lrn: "", department: "", shs_track: "",
+  student_lrn: "", education_level: "", department: "", shs_track: "",
   elem_school: "", elem_address: "", elem_year: "",
   sec_school: "", sec_address: "", sec_year: "",
   last_school: "", last_school_address: "", last_school_year: "",
-  course: "", year_level: "",
+  program: "", level: "", course: "", year_level: "",
 };
 
 const Register = () => {
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const academicCatalogQuery = useQuery({
+    queryKey: ["academic-catalog"],
+    queryFn: fetchAcademicCatalog,
+    staleTime: 1000 * 60 * 10,
+  });
 
   const set = (name: string) => (val: string) =>
     setForm((prev) => ({ ...prev, [name]: val }));
@@ -58,28 +67,97 @@ const Register = () => {
   };
 
   const showSpouse = ["Married", "Widowed", "Separated", "Divorced"].includes(form.civil_status);
-  const isSHS = form.department === "Senior High School";
-  const isCollege = form.department === "College";
+  const selectedEducationLevel = normalizeEducationLevel(form.education_level || form.department);
+  const isSHS = selectedEducationLevel === "shs";
+  const isCollege = selectedEducationLevel === "college";
+  const educationLevelOptions = academicCatalogQuery.data?.educationLevels ?? [];
+  const availablePrograms = selectedEducationLevel
+    ? academicCatalogQuery.data?.programsByEducationLevel[selectedEducationLevel] ?? []
+    : [];
+  const selectedProgram = availablePrograms.find((program) => program.value === form.program);
+  const availableLevels = selectedProgram
+    ? academicCatalogQuery.data?.levelsByProgramId[selectedProgram.id] ?? []
+    : [];
+
+  const setEducationLevel = (value: string) =>
+    setForm((prev) => ({
+      ...prev,
+      education_level: value,
+      department: getLegacyDepartmentLabel(value),
+      program: "",
+      level: "",
+      course: "",
+      shs_track: "",
+      year_level: "",
+    }));
+
+  const setProgram = (value: string) =>
+    setForm((prev) => ({
+      ...prev,
+      program: value,
+      level: "",
+      course: selectedEducationLevel === "college" ? value : "",
+      shs_track: selectedEducationLevel === "shs" ? value : "",
+      year_level: "",
+    }));
+
+  const setLevel = (value: string) =>
+    setForm((prev) => ({
+      ...prev,
+      level: value,
+      year_level: value,
+    }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.first_name || !form.last_name || !form.gender || !form.department || !form.year_level) {
+    if (!form.first_name || !form.last_name || !form.gender || !selectedEducationLevel || !form.program || !form.level) {
       toast.error("Please fill in all required fields.");
       return;
     }
+    if (academicCatalogQuery.isError) {
+      toast.error("Academic options are unavailable right now. Please try again.");
+      return;
+    }
     setLoading(true);
-    const { religion_other, tribe_other, ...rest } = form;
-    const payload: TablesInsert<"admission"> = {
+    const {
+      religion_other,
+      tribe_other,
+      education_level: _educationLevel,
+      department: _department,
+      shs_track: _shsTrack,
+      program: _program,
+      course: _course,
+      level: _level,
+      year_level: _yearLevel,
+      ...rest
+    } = form;
+    const legacyPayload: TablesInsert<"admission"> = {
       ...rest,
       date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString().split("T")[0] : null,
       age: form.age ? parseInt(form.age) : null,
       monthly_income: form.monthly_income ? parseInt(form.monthly_income.replace(/,/g, "")) : null,
-      shs_track: isSHS ? form.shs_track : null,
+      department: getLegacyDepartmentLabel(selectedEducationLevel) || null,
+      course: isCollege ? form.program || null : null,
+      shs_track: isSHS ? form.program || null : null,
+      year_level: form.level || null,
       spouse_name: showSpouse ? form.spouse_name : null,
       religion: form.religion === "Other" ? religion_other || "Other" : form.religion,
       tribe: form.tribe === "Other" ? tribe_other || "Other" : form.tribe,
     };
-    const { error } = await supabase.from("admission").insert([payload]);
+
+    const payload: TablesInsert<"admission"> = {
+      ...legacyPayload,
+      education_level: selectedEducationLevel || null,
+      program: form.program || null,
+      level: form.level || null,
+    };
+
+    let { error } = await supabase.from("admission").insert([payload]);
+
+    if (error && /column admission\.(education_level|program|level) does not exist/i.test(error.message)) {
+      ({ error } = await supabase.from("admission").insert([legacyPayload]));
+    }
+
     setLoading(false);
     if (error) {
       toast.error("Registration failed. Please try again.");
@@ -218,7 +296,15 @@ const Register = () => {
           {/* Academic */}
           <FormSection title="Academic Information" description="School and enrollment details" icon={<School className="h-4 w-4" />}>
             <div className="form-grid">
-              <SelectField label="Department" name="department" required options={departmentOptions} value={form.department} onChange={set("department")} placeholder="Select your department" />
+              <SelectField
+                label="Education Level"
+                name="education_level"
+                required
+                options={educationLevelOptions}
+                value={selectedEducationLevel}
+                onChange={setEducationLevel}
+                placeholder={academicCatalogQuery.isLoading ? "Loading education levels..." : "Select your education level"}
+              />
               <div className="space-y-1.5">
                 <Label htmlFor="student_lrn" className="text-sm font-medium text-foreground">
                   LRN <span className="text-destructive">*</span>
@@ -239,23 +325,36 @@ const Register = () => {
                   className="h-10 bg-background"
                 />
               </div>
-              {isCollege && (
-                <SelectField label="Course" name="course" required options={courseOptions} value={form.course} onChange={set("course")} placeholder="Select your course" />
+              {selectedEducationLevel && (
+                <SelectField
+                  label="Program"
+                  name="program"
+                  required
+                  options={availablePrograms}
+                  value={form.program}
+                  onChange={setProgram}
+                  placeholder={academicCatalogQuery.isLoading ? "Loading programs..." : "Select your program"}
+                />
               )}
-              {(isSHS || isCollege) && (
-                <SelectField label={isSHS ? "Grade Level" : "Year Level"} name="year_level" required options={isSHS ? shsYearLevelOptions : collegeYearLevelOptions} value={form.year_level} onChange={(val) => { set("year_level")(val); set("shs_track")(""); }} placeholder={isSHS ? "Select your grade level" : "Select your year level"} />
+              {selectedEducationLevel && (
+                <SelectField
+                  label="Level"
+                  name="level"
+                  required
+                  options={availableLevels}
+                  value={form.level}
+                  onChange={setLevel}
+                  placeholder={
+                    form.program
+                      ? "Select your level"
+                      : "Select your program first"
+                  }
+                />
               )}
-              {isSHS && form.year_level === "Grade 11" && (
-                <SelectField label="Strand" name="shs_track" required options={["Academic Track", "Tech Pro Track"]} value={form.shs_track} onChange={set("shs_track")} placeholder="Select your strand" />
-              )}
-              {isSHS && form.year_level === "Grade 12" && (
-                <SelectField label="Strand" name="shs_track" required options={["HUMSS", "STEM", "ABM", "ICT", "GAS"]} value={form.shs_track} onChange={set("shs_track")} placeholder="Select your strand" />
-              )}
-              {!isSHS && !isCollege && form.department && (
-                <>
-                  <SelectField label="Year Level" name="year_level" required options={yearLevelOptions} value={form.year_level} onChange={set("year_level")} />
-                  <SelectField label="Course" name="course" required options={courseOptions} value={form.course} onChange={set("course")} />
-                </>
+              {academicCatalogQuery.isError && (
+                <p className="text-sm text-destructive">
+                  Academic options could not be loaded from Supabase.
+                </p>
               )}
             </div>
             <div className="mt-4 space-y-4">

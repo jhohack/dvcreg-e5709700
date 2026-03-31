@@ -29,7 +29,7 @@ interface TextFieldProps extends BaseProps {
 }
 
 interface SelectFieldProps extends BaseProps {
-  options: string[];
+  options: Array<string | { value: string; label: string }>;
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
@@ -72,9 +72,15 @@ export const SelectField = ({
         <SelectValue placeholder={placeholder || `Select ${label.toLowerCase()}`} />
       </SelectTrigger>
       <SelectContent>
-        {options.map((opt) => (
-          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-        ))}
+        {options.map((opt) => {
+          const option = typeof opt === "string" ? { value: opt, label: opt } : opt;
+
+          return (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          );
+        })}
       </SelectContent>
     </Select>
   </div>

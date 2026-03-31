@@ -17,6 +17,7 @@ type StudentInformationTable = {
     date_created: string
     date_of_birth: string | null
     department: string | null
+    education_level: string | null
     elem_address: string | null
     elem_school: string | null
     elem_year: string | null
@@ -35,6 +36,7 @@ type StudentInformationTable = {
     last_school: string | null
     last_school_address: string | null
     last_school_year: string | null
+    level: string | null
     middle_name: string | null
     monthly_income: number | null
     mother_contact: string | null
@@ -51,6 +53,7 @@ type StudentInformationTable = {
     parent_guardian_relation: string | null
     parent_marital_status: string | null
     place_of_birth: string | null
+    program: string | null
     religion: string | null
     sec_address: string | null
     sec_parent_guardian: string | null
@@ -76,6 +79,7 @@ type StudentInformationTable = {
     date_created?: string
     date_of_birth?: string | null
     department?: string | null
+    education_level?: string | null
     elem_address?: string | null
     elem_school?: string | null
     elem_year?: string | null
@@ -94,6 +98,7 @@ type StudentInformationTable = {
     last_school?: string | null
     last_school_address?: string | null
     last_school_year?: string | null
+    level?: string | null
     middle_name?: string | null
     monthly_income?: number | null
     mother_contact?: string | null
@@ -110,6 +115,7 @@ type StudentInformationTable = {
     parent_guardian_relation?: string | null
     parent_marital_status?: string | null
     place_of_birth?: string | null
+    program?: string | null
     religion?: string | null
     sec_address?: string | null
     sec_parent_guardian?: string | null
@@ -135,6 +141,7 @@ type StudentInformationTable = {
     date_created?: string
     date_of_birth?: string | null
     department?: string | null
+    education_level?: string | null
     elem_address?: string | null
     elem_school?: string | null
     elem_year?: string | null
@@ -153,6 +160,7 @@ type StudentInformationTable = {
     last_school?: string | null
     last_school_address?: string | null
     last_school_year?: string | null
+    level?: string | null
     middle_name?: string | null
     monthly_income?: number | null
     mother_contact?: string | null
@@ -169,6 +177,7 @@ type StudentInformationTable = {
     parent_guardian_relation?: string | null
     parent_marital_status?: string | null
     place_of_birth?: string | null
+    program?: string | null
     religion?: string | null
     sec_address?: string | null
     sec_parent_guardian?: string | null
@@ -187,6 +196,65 @@ type StudentInformationTable = {
   Relationships: []
 }
 
+type SystemProgramsTable = {
+  Row: {
+    created_at: string
+    created_by: string | null
+    education_level: string
+    id: string
+    program_name: string
+    updated_at: string
+    updated_by: string | null
+  }
+  Insert: {
+    created_at?: string
+    created_by?: string | null
+    education_level: string
+    id?: string
+    program_name: string
+    updated_at?: string
+    updated_by?: string | null
+  }
+  Update: {
+    created_at?: string
+    created_by?: string | null
+    education_level?: string
+    id?: string
+    program_name?: string
+    updated_at?: string
+    updated_by?: string | null
+  }
+  Relationships: []
+}
+
+type SystemProgramLevelsTable = {
+  Row: {
+    created_at: string
+    id: string
+    is_enabled: boolean
+    level_name: string
+    program_id: string
+    sort_order: number
+  }
+  Insert: {
+    created_at?: string
+    id?: string
+    is_enabled?: boolean
+    level_name: string
+    program_id: string
+    sort_order?: number
+  }
+  Update: {
+    created_at?: string
+    id?: string
+    is_enabled?: boolean
+    level_name?: string
+    program_id?: string
+    sort_order?: number
+  }
+  Relationships: []
+}
+
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -196,6 +264,8 @@ export type Database = {
   public: {
     Tables: {
       admission: StudentInformationTable
+      system_program_levels: SystemProgramLevelsTable
+      system_programs: SystemProgramsTable
       student_information: StudentInformationTable
     }
     Views: {
