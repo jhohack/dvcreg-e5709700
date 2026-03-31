@@ -6,255 +6,6 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-type StudentInformationTable = {
-  Row: {
-    address: string | null
-    age: number | null
-    civil_status: string | null
-    contact: string | null
-    course: string | null
-    current_address: string | null
-    date_created: string
-    date_of_birth: string | null
-    department: string | null
-    education_level: string | null
-    elem_address: string | null
-    elem_school: string | null
-    elem_year: string | null
-    facebook_link: string | null
-    father_contact: string | null
-    father_first_name: string | null
-    father_last_name: string | null
-    father_middle_name: string | null
-    father_name: string | null
-    father_occupation: string | null
-    first_name: string
-    gender: string | null
-    id: string
-    income_sources: string | null
-    last_name: string
-    last_school: string | null
-    last_school_address: string | null
-    last_school_year: string | null
-    level: string | null
-    middle_name: string | null
-    monthly_income: number | null
-    mother_contact: string | null
-    mother_first_name: string | null
-    mother_last_name: string | null
-    mother_middle_name: string | null
-    mother_name: string | null
-    mother_occupation: string | null
-    nationality: string | null
-    other_income: string | null
-    parent_guardian: string | null
-    parent_guardian_address: string | null
-    parent_guardian_contact: string | null
-    parent_guardian_relation: string | null
-    parent_marital_status: string | null
-    place_of_birth: string | null
-    program: string | null
-    religion: string | null
-    sec_address: string | null
-    sec_parent_guardian: string | null
-    sec_parent_guardian_address: string | null
-    sec_parent_guardian_contact: string | null
-    sec_parent_guardian_relation: string | null
-    sec_school: string | null
-    sec_year: string | null
-    shs_track: string | null
-    spouse_name: string | null
-    student_lrn: string | null
-    tribe: string | null
-    vaccination_status: string | null
-    year_level: string | null
-  }
-  Insert: {
-    address?: string | null
-    age?: number | null
-    civil_status?: string | null
-    contact?: string | null
-    course?: string | null
-    current_address?: string | null
-    date_created?: string
-    date_of_birth?: string | null
-    department?: string | null
-    education_level?: string | null
-    elem_address?: string | null
-    elem_school?: string | null
-    elem_year?: string | null
-    facebook_link?: string | null
-    father_contact?: string | null
-    father_first_name?: string | null
-    father_last_name?: string | null
-    father_middle_name?: string | null
-    father_name?: string | null
-    father_occupation?: string | null
-    first_name: string
-    gender?: string | null
-    id?: string
-    income_sources?: string | null
-    last_name: string
-    last_school?: string | null
-    last_school_address?: string | null
-    last_school_year?: string | null
-    level?: string | null
-    middle_name?: string | null
-    monthly_income?: number | null
-    mother_contact?: string | null
-    mother_first_name?: string | null
-    mother_last_name?: string | null
-    mother_middle_name?: string | null
-    mother_name?: string | null
-    mother_occupation?: string | null
-    nationality?: string | null
-    other_income?: string | null
-    parent_guardian?: string | null
-    parent_guardian_address?: string | null
-    parent_guardian_contact?: string | null
-    parent_guardian_relation?: string | null
-    parent_marital_status?: string | null
-    place_of_birth?: string | null
-    program?: string | null
-    religion?: string | null
-    sec_address?: string | null
-    sec_parent_guardian?: string | null
-    sec_parent_guardian_address?: string | null
-    sec_parent_guardian_contact?: string | null
-    sec_parent_guardian_relation?: string | null
-    sec_school?: string | null
-    sec_year?: string | null
-    shs_track?: string | null
-    spouse_name?: string | null
-    student_lrn?: string | null
-    tribe?: string | null
-    vaccination_status?: string | null
-    year_level?: string | null
-  }
-  Update: {
-    address?: string | null
-    age?: number | null
-    civil_status?: string | null
-    contact?: string | null
-    course?: string | null
-    current_address?: string | null
-    date_created?: string
-    date_of_birth?: string | null
-    department?: string | null
-    education_level?: string | null
-    elem_address?: string | null
-    elem_school?: string | null
-    elem_year?: string | null
-    facebook_link?: string | null
-    father_contact?: string | null
-    father_first_name?: string | null
-    father_last_name?: string | null
-    father_middle_name?: string | null
-    father_name?: string | null
-    father_occupation?: string | null
-    first_name?: string
-    gender?: string | null
-    id?: string
-    income_sources?: string | null
-    last_name?: string
-    last_school?: string | null
-    last_school_address?: string | null
-    last_school_year?: string | null
-    level?: string | null
-    middle_name?: string | null
-    monthly_income?: number | null
-    mother_contact?: string | null
-    mother_first_name?: string | null
-    mother_last_name?: string | null
-    mother_middle_name?: string | null
-    mother_name?: string | null
-    mother_occupation?: string | null
-    nationality?: string | null
-    other_income?: string | null
-    parent_guardian?: string | null
-    parent_guardian_address?: string | null
-    parent_guardian_contact?: string | null
-    parent_guardian_relation?: string | null
-    parent_marital_status?: string | null
-    place_of_birth?: string | null
-    program?: string | null
-    religion?: string | null
-    sec_address?: string | null
-    sec_parent_guardian?: string | null
-    sec_parent_guardian_address?: string | null
-    sec_parent_guardian_contact?: string | null
-    sec_parent_guardian_relation?: string | null
-    sec_school?: string | null
-    sec_year?: string | null
-    shs_track?: string | null
-    spouse_name?: string | null
-    student_lrn?: string | null
-    tribe?: string | null
-    vaccination_status?: string | null
-    year_level?: string | null
-  }
-  Relationships: []
-}
-
-type SystemProgramsTable = {
-  Row: {
-    created_at: string
-    created_by: string | null
-    education_level: string
-    id: string
-    program_name: string
-    updated_at: string
-    updated_by: string | null
-  }
-  Insert: {
-    created_at?: string
-    created_by?: string | null
-    education_level: string
-    id?: string
-    program_name: string
-    updated_at?: string
-    updated_by?: string | null
-  }
-  Update: {
-    created_at?: string
-    created_by?: string | null
-    education_level?: string
-    id?: string
-    program_name?: string
-    updated_at?: string
-    updated_by?: string | null
-  }
-  Relationships: []
-}
-
-type SystemProgramLevelsTable = {
-  Row: {
-    created_at: string
-    id: string
-    is_enabled: boolean
-    level_name: string
-    program_id: string
-    sort_order: number
-  }
-  Insert: {
-    created_at?: string
-    id?: string
-    is_enabled?: boolean
-    level_name: string
-    program_id: string
-    sort_order?: number
-  }
-  Update: {
-    created_at?: string
-    id?: string
-    is_enabled?: boolean
-    level_name?: string
-    program_id?: string
-    sort_order?: number
-  }
-  Relationships: []
-}
-
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -263,16 +14,754 @@ export type Database = {
   }
   public: {
     Tables: {
-      admission: StudentInformationTable
-      system_program_levels: SystemProgramLevelsTable
-      system_programs: SystemProgramsTable
-      student_information: StudentInformationTable
+      admission: {
+        Row: {
+          academic_year: string | null
+          address: string | null
+          admission_status: string
+          age: number | null
+          civil_status: string | null
+          contact: string | null
+          course: string | null
+          current_address: string | null
+          date_created: string
+          date_of_birth: string | null
+          department: string | null
+          elem_address: string | null
+          elem_school: string | null
+          elem_year: string | null
+          facebook_link: string | null
+          father_contact: string | null
+          father_first_name: string | null
+          father_last_name: string | null
+          father_middle_name: string | null
+          father_name: string | null
+          father_occupation: string | null
+          first_name: string
+          gender: string | null
+          id: string
+          income_sources: string | null
+          last_name: string
+          last_school: string | null
+          last_school_address: string | null
+          last_school_year: string | null
+          middle_name: string | null
+          monthly_income: number | null
+          mother_contact: string | null
+          mother_first_name: string | null
+          mother_last_name: string | null
+          mother_middle_name: string | null
+          mother_name: string | null
+          mother_occupation: string | null
+          nationality: string | null
+          other_income: string | null
+          parent_guardian: string | null
+          parent_guardian_address: string | null
+          parent_guardian_contact: string | null
+          parent_guardian_relation: string | null
+          parent_marital_status: string | null
+          place_of_birth: string | null
+          religion: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sec_address: string | null
+          sec_parent_guardian: string | null
+          sec_parent_guardian_address: string | null
+          sec_parent_guardian_contact: string | null
+          sec_parent_guardian_relation: string | null
+          sec_school: string | null
+          sec_year: string | null
+          semester: string | null
+          shs_track: string | null
+          spouse_name: string | null
+          student_lrn: string | null
+          tribe: string | null
+          vaccination_status: string | null
+          year_level: string | null
+        }
+        Insert: {
+          academic_year?: string | null
+          address?: string | null
+          admission_status?: string
+          age?: number | null
+          civil_status?: string | null
+          contact?: string | null
+          course?: string | null
+          current_address?: string | null
+          date_created?: string
+          date_of_birth?: string | null
+          department?: string | null
+          elem_address?: string | null
+          elem_school?: string | null
+          elem_year?: string | null
+          facebook_link?: string | null
+          father_contact?: string | null
+          father_first_name?: string | null
+          father_last_name?: string | null
+          father_middle_name?: string | null
+          father_name?: string | null
+          father_occupation?: string | null
+          first_name: string
+          gender?: string | null
+          id?: string
+          income_sources?: string | null
+          last_name: string
+          last_school?: string | null
+          last_school_address?: string | null
+          last_school_year?: string | null
+          middle_name?: string | null
+          monthly_income?: number | null
+          mother_contact?: string | null
+          mother_first_name?: string | null
+          mother_last_name?: string | null
+          mother_middle_name?: string | null
+          mother_name?: string | null
+          mother_occupation?: string | null
+          nationality?: string | null
+          other_income?: string | null
+          parent_guardian?: string | null
+          parent_guardian_address?: string | null
+          parent_guardian_contact?: string | null
+          parent_guardian_relation?: string | null
+          parent_marital_status?: string | null
+          place_of_birth?: string | null
+          religion?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sec_address?: string | null
+          sec_parent_guardian?: string | null
+          sec_parent_guardian_address?: string | null
+          sec_parent_guardian_contact?: string | null
+          sec_parent_guardian_relation?: string | null
+          sec_school?: string | null
+          sec_year?: string | null
+          semester?: string | null
+          shs_track?: string | null
+          spouse_name?: string | null
+          student_lrn?: string | null
+          tribe?: string | null
+          vaccination_status?: string | null
+          year_level?: string | null
+        }
+        Update: {
+          academic_year?: string | null
+          address?: string | null
+          admission_status?: string
+          age?: number | null
+          civil_status?: string | null
+          contact?: string | null
+          course?: string | null
+          current_address?: string | null
+          date_created?: string
+          date_of_birth?: string | null
+          department?: string | null
+          elem_address?: string | null
+          elem_school?: string | null
+          elem_year?: string | null
+          facebook_link?: string | null
+          father_contact?: string | null
+          father_first_name?: string | null
+          father_last_name?: string | null
+          father_middle_name?: string | null
+          father_name?: string | null
+          father_occupation?: string | null
+          first_name?: string
+          gender?: string | null
+          id?: string
+          income_sources?: string | null
+          last_name?: string
+          last_school?: string | null
+          last_school_address?: string | null
+          last_school_year?: string | null
+          middle_name?: string | null
+          monthly_income?: number | null
+          mother_contact?: string | null
+          mother_first_name?: string | null
+          mother_last_name?: string | null
+          mother_middle_name?: string | null
+          mother_name?: string | null
+          mother_occupation?: string | null
+          nationality?: string | null
+          other_income?: string | null
+          parent_guardian?: string | null
+          parent_guardian_address?: string | null
+          parent_guardian_contact?: string | null
+          parent_guardian_relation?: string | null
+          parent_marital_status?: string | null
+          place_of_birth?: string | null
+          religion?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sec_address?: string | null
+          sec_parent_guardian?: string | null
+          sec_parent_guardian_address?: string | null
+          sec_parent_guardian_contact?: string | null
+          sec_parent_guardian_relation?: string | null
+          sec_school?: string | null
+          sec_year?: string | null
+          semester?: string | null
+          shs_track?: string | null
+          spouse_name?: string | null
+          student_lrn?: string | null
+          tribe?: string | null
+          vaccination_status?: string | null
+          year_level?: string | null
+        }
+        Relationships: []
+      }
+      enrollments: {
+        Row: {
+          address: string | null
+          birthdate: string | null
+          contact_number: string | null
+          division: string
+          email: string | null
+          fees: Json | null
+          full_name: string
+          gender: string | null
+          id: string
+          level: string
+          payment_status: string
+          program: string
+          remarks: string | null
+          school_id: string
+          school_year: string
+          semester: string
+          status: string
+          student_id: string | null
+          student_type: string
+          subjects: Json
+          units: number | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          birthdate?: string | null
+          contact_number?: string | null
+          division?: string
+          email?: string | null
+          fees?: Json | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          level?: string
+          payment_status?: string
+          program?: string
+          remarks?: string | null
+          school_id?: string
+          school_year?: string
+          semester?: string
+          status?: string
+          student_id?: string | null
+          student_type?: string
+          subjects?: Json
+          units?: number | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          birthdate?: string | null
+          contact_number?: string | null
+          division?: string
+          email?: string | null
+          fees?: Json | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          level?: string
+          payment_status?: string
+          program?: string
+          remarks?: string | null
+          school_id?: string
+          school_year?: string
+          semester?: string
+          status?: string
+          student_id?: string | null
+          student_type?: string
+          subjects?: Json
+          units?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_information"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_information: {
+        Row: {
+          academic_year: string | null
+          address: string | null
+          age: number | null
+          civil_status: string | null
+          contact: string | null
+          course: string | null
+          current_address: string | null
+          date_created: string
+          date_of_birth: string | null
+          department: string | null
+          elem_address: string | null
+          elem_school: string | null
+          elem_year: string | null
+          facebook_link: string | null
+          father_contact: string | null
+          father_first_name: string | null
+          father_last_name: string | null
+          father_middle_name: string | null
+          father_name: string | null
+          father_occupation: string | null
+          first_name: string
+          gender: string | null
+          id: string
+          income_sources: string | null
+          last_name: string
+          last_school: string | null
+          last_school_address: string | null
+          last_school_year: string | null
+          middle_name: string | null
+          monthly_income: number | null
+          mother_contact: string | null
+          mother_first_name: string | null
+          mother_last_name: string | null
+          mother_middle_name: string | null
+          mother_name: string | null
+          mother_occupation: string | null
+          nationality: string | null
+          other_income: string | null
+          parent_guardian: string | null
+          parent_guardian_address: string | null
+          parent_guardian_contact: string | null
+          parent_guardian_relation: string | null
+          parent_marital_status: string | null
+          place_of_birth: string | null
+          religion: string | null
+          sec_address: string | null
+          sec_parent_guardian: string | null
+          sec_parent_guardian_address: string | null
+          sec_parent_guardian_contact: string | null
+          sec_parent_guardian_relation: string | null
+          sec_school: string | null
+          sec_year: string | null
+          semester: string | null
+          shs_track: string | null
+          spouse_name: string | null
+          student_lrn: string | null
+          tribe: string | null
+          vaccination_status: string | null
+          year_level: string | null
+        }
+        Insert: {
+          academic_year?: string | null
+          address?: string | null
+          age?: number | null
+          civil_status?: string | null
+          contact?: string | null
+          course?: string | null
+          current_address?: string | null
+          date_created?: string
+          date_of_birth?: string | null
+          department?: string | null
+          elem_address?: string | null
+          elem_school?: string | null
+          elem_year?: string | null
+          facebook_link?: string | null
+          father_contact?: string | null
+          father_first_name?: string | null
+          father_last_name?: string | null
+          father_middle_name?: string | null
+          father_name?: string | null
+          father_occupation?: string | null
+          first_name: string
+          gender?: string | null
+          id?: string
+          income_sources?: string | null
+          last_name: string
+          last_school?: string | null
+          last_school_address?: string | null
+          last_school_year?: string | null
+          middle_name?: string | null
+          monthly_income?: number | null
+          mother_contact?: string | null
+          mother_first_name?: string | null
+          mother_last_name?: string | null
+          mother_middle_name?: string | null
+          mother_name?: string | null
+          mother_occupation?: string | null
+          nationality?: string | null
+          other_income?: string | null
+          parent_guardian?: string | null
+          parent_guardian_address?: string | null
+          parent_guardian_contact?: string | null
+          parent_guardian_relation?: string | null
+          parent_marital_status?: string | null
+          place_of_birth?: string | null
+          religion?: string | null
+          sec_address?: string | null
+          sec_parent_guardian?: string | null
+          sec_parent_guardian_address?: string | null
+          sec_parent_guardian_contact?: string | null
+          sec_parent_guardian_relation?: string | null
+          sec_school?: string | null
+          sec_year?: string | null
+          semester?: string | null
+          shs_track?: string | null
+          spouse_name?: string | null
+          student_lrn?: string | null
+          tribe?: string | null
+          vaccination_status?: string | null
+          year_level?: string | null
+        }
+        Update: {
+          academic_year?: string | null
+          address?: string | null
+          age?: number | null
+          civil_status?: string | null
+          contact?: string | null
+          course?: string | null
+          current_address?: string | null
+          date_created?: string
+          date_of_birth?: string | null
+          department?: string | null
+          elem_address?: string | null
+          elem_school?: string | null
+          elem_year?: string | null
+          facebook_link?: string | null
+          father_contact?: string | null
+          father_first_name?: string | null
+          father_last_name?: string | null
+          father_middle_name?: string | null
+          father_name?: string | null
+          father_occupation?: string | null
+          first_name?: string
+          gender?: string | null
+          id?: string
+          income_sources?: string | null
+          last_name?: string
+          last_school?: string | null
+          last_school_address?: string | null
+          last_school_year?: string | null
+          middle_name?: string | null
+          monthly_income?: number | null
+          mother_contact?: string | null
+          mother_first_name?: string | null
+          mother_last_name?: string | null
+          mother_middle_name?: string | null
+          mother_name?: string | null
+          mother_occupation?: string | null
+          nationality?: string | null
+          other_income?: string | null
+          parent_guardian?: string | null
+          parent_guardian_address?: string | null
+          parent_guardian_contact?: string | null
+          parent_guardian_relation?: string | null
+          parent_marital_status?: string | null
+          place_of_birth?: string | null
+          religion?: string | null
+          sec_address?: string | null
+          sec_parent_guardian?: string | null
+          sec_parent_guardian_address?: string | null
+          sec_parent_guardian_contact?: string | null
+          sec_parent_guardian_relation?: string | null
+          sec_school?: string | null
+          sec_year?: string | null
+          semester?: string | null
+          shs_track?: string | null
+          spouse_name?: string | null
+          student_lrn?: string | null
+          tribe?: string | null
+          vaccination_status?: string | null
+          year_level?: string | null
+        }
+        Relationships: []
+      }
+      system_academic_settings: {
+        Row: {
+          current_academic_year: string
+          current_semester: string
+          singleton: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          current_academic_year: string
+          current_semester: string
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          current_academic_year?: string
+          current_semester?: string
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      system_academic_settings_history: {
+        Row: {
+          academic_year: string
+          changed_at: string
+          changed_by: string | null
+          id: string
+          semester: string
+        }
+        Insert: {
+          academic_year: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          semester: string
+        }
+        Update: {
+          academic_year?: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          semester?: string
+        }
+        Relationships: []
+      }
+      system_program_levels: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          level_name: string
+          program_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          level_name: string
+          program_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          level_name?: string
+          program_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_program_levels_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "system_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_programs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          education_level: string
+          id: string
+          program_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          education_level: string
+          id?: string
+          program_name: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          education_level?: string
+          id?: string
+          program_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_system_program: {
+        Args: {
+          education_level_input: string
+          levels_input: string[]
+          program_name_input: string
+          updated_by_input?: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          education_level: string
+          id: string
+          program_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "system_programs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      delete_system_program: {
+        Args: { program_id_input: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          education_level: string
+          id: string
+          program_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "system_programs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      review_admission: {
+        Args: {
+          admission_id_input: string
+          decision_input: string
+          review_notes_input?: string
+          reviewed_by_input?: string
+        }
+        Returns: {
+          academic_year: string | null
+          address: string | null
+          admission_status: string
+          age: number | null
+          civil_status: string | null
+          contact: string | null
+          course: string | null
+          current_address: string | null
+          date_created: string
+          date_of_birth: string | null
+          department: string | null
+          elem_address: string | null
+          elem_school: string | null
+          elem_year: string | null
+          facebook_link: string | null
+          father_contact: string | null
+          father_first_name: string | null
+          father_last_name: string | null
+          father_middle_name: string | null
+          father_name: string | null
+          father_occupation: string | null
+          first_name: string
+          gender: string | null
+          id: string
+          income_sources: string | null
+          last_name: string
+          last_school: string | null
+          last_school_address: string | null
+          last_school_year: string | null
+          middle_name: string | null
+          monthly_income: number | null
+          mother_contact: string | null
+          mother_first_name: string | null
+          mother_last_name: string | null
+          mother_middle_name: string | null
+          mother_name: string | null
+          mother_occupation: string | null
+          nationality: string | null
+          other_income: string | null
+          parent_guardian: string | null
+          parent_guardian_address: string | null
+          parent_guardian_contact: string | null
+          parent_guardian_relation: string | null
+          parent_marital_status: string | null
+          place_of_birth: string | null
+          religion: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sec_address: string | null
+          sec_parent_guardian: string | null
+          sec_parent_guardian_address: string | null
+          sec_parent_guardian_contact: string | null
+          sec_parent_guardian_relation: string | null
+          sec_school: string | null
+          sec_year: string | null
+          semester: string | null
+          shs_track: string | null
+          spouse_name: string | null
+          student_lrn: string | null
+          tribe: string | null
+          vaccination_status: string | null
+          year_level: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "admission"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_global_academic_settings: {
+        Args: {
+          academic_year_input: string
+          semester_input: string
+          updated_by_input?: string
+        }
+        Returns: {
+          current_academic_year: string
+          current_semester: string
+          singleton: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "system_academic_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_system_program: {
+        Args: {
+          levels_input: string[]
+          program_id_input: string
+          program_name_input: string
+          updated_by_input?: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          education_level: string
+          id: string
+          program_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "system_programs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       [_ in never]: never
