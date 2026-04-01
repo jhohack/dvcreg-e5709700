@@ -1,0 +1,7 @@
+{
+  "name": "dvcreg/php-api",
+  "type": "project",
+  "require": {
+    "phpmailer/phpmailer": "^6.10"
+  }
+}

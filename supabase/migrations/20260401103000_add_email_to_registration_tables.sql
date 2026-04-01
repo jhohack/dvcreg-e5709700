@@ -1,0 +1,5 @@
+ALTER TABLE IF EXISTS public.student_information
+  ADD COLUMN IF NOT EXISTS email TEXT;
+
+ALTER TABLE IF EXISTS public.admission
+  ADD COLUMN IF NOT EXISTS email TEXT;

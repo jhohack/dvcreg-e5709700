@@ -22,6 +22,7 @@ interface Student {
   first_name: string;
   last_name: string;
   middle_name: string | null;
+  email: string | null;
   education_level: string | null;
   department: string | null;
   program: string | null;
@@ -39,7 +40,7 @@ const fieldLabels: Record<string, string> = {
   gender: "Gender", civil_status: "Civil Status", spouse_name: "Spouse Name",
   nationality: "Nationality", religion: "Religion", tribe: "Tribe",
   vaccination_status: "Vaccination Status", address: "Permanent Address",
-  current_address: "Current Address", contact: "Contact", facebook_link: "Facebook",
+  current_address: "Current Address", contact: "Contact", email: "Email Address", facebook_link: "Facebook",
   parent_guardian: "Primary Guardian", parent_guardian_relation: "Relation",
   parent_guardian_address: "Guardian Address", parent_guardian_contact: "Guardian Contact",
   sec_parent_guardian: "Secondary Guardian", sec_parent_guardian_relation: "Relation",
