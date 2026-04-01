@@ -37,7 +37,13 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 
 const FORM_STORAGE_KEY = "dvcreg-registration-form";
 const VERIFICATION_STORAGE_KEY = "dvcreg-registration-verification";
-const API_BASE = import.meta.env.DEV ? "/api" : "api";
+const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+const isLovableHost = typeof window !== "undefined" && /(?:^|\.)lovable\.(?:app|dev)$/.test(window.location.hostname);
+const API_BASE = configuredApiBase || (import.meta.env.DEV ? "/api" : "api");
+
+const verificationServiceUnavailableMessage = isLovableHost
+  ? "Email verification is not configured for Lovable yet. Host the PHP API and set VITE_API_BASE_URL to that public /api URL."
+  : "Verification service is unavailable right now. Make sure the PHP API is running.";
 
 const initialForm = {
   first_name: "", last_name: "", middle_name: "",
@@ -221,17 +227,31 @@ const maskEmail = (email: string) => {
 };
 
 const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
-  const response = await fetch(`${API_BASE}/${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(verificationServiceUnavailableMessage);
+  }
 
-  const data = await response.json().catch(() => null);
+  const contentType = response.headers.get("content-type") ?? "";
+  const data = contentType.includes("application/json")
+    ? await response.json().catch(() => null)
+    : null;
+
   if (!response.ok || !data?.ok) {
-    throw new Error(data?.message || "Request failed.");
+    const message = data?.message
+      || (response.status === 404 ? verificationServiceUnavailableMessage : null)
+      || (response.status >= 500 ? "Verification service error. Please try again in a moment." : null)
+      || "Request failed.";
+
+    throw new Error(message);
   }
 
   return data as T;

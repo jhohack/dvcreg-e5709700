@@ -18,13 +18,49 @@ function set_api_headers(): void
     header('Content-Type: application/json');
 
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    if ($origin !== '' && preg_match('/^https?:\/\/localhost(?::\d+)?$/', $origin) === 1) {
+    if ($origin !== '' && origin_is_allowed($origin)) {
         header("Access-Control-Allow-Origin: {$origin}");
         header('Vary: Origin');
         header('Access-Control-Allow-Headers: Content-Type');
         header('Access-Control-Allow-Methods: POST, OPTIONS');
         header('Access-Control-Allow-Credentials: true');
     }
+}
+
+function allowed_origins(): array
+{
+    static $origins = null;
+
+    if (is_array($origins)) {
+        return $origins;
+    }
+
+    $origins = [
+        'http://localhost',
+        'http://localhost:8080',
+        'http://localhost:4173',
+        'http://127.0.0.1',
+        'http://127.0.0.1:8080',
+        'http://127.0.0.1:4173',
+    ];
+
+    $configuredOrigins = trim((string) env_value('ALLOWED_ORIGINS', ''));
+    if ($configuredOrigins !== '') {
+        foreach (explode(',', $configuredOrigins) as $candidate) {
+            $candidate = trim($candidate);
+            if ($candidate !== '') {
+                $origins[] = $candidate;
+            }
+        }
+    }
+
+    $origins = array_values(array_unique($origins));
+    return $origins;
+}
+
+function origin_is_allowed(string $origin): bool
+{
+    return in_array($origin, allowed_origins(), true);
 }
 
 function env_config(): array
