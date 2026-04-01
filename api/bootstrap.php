@@ -4,13 +4,46 @@ declare(strict_types=1);
 use PHPMailer\PHPMailer\Exception as MailerException;
 use PHPMailer\PHPMailer\PHPMailer;
 
-require_once __DIR__ . '/../vendor/autoload.php';
-
-set_api_headers();
+bootstrap_runtime();
+require_autoload_file();
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     http_response_code(204);
     exit;
+}
+
+function bootstrap_runtime(): void
+{
+    ob_start();
+    set_api_headers();
+
+    set_exception_handler(static function (Throwable $throwable): void {
+        handle_uncaught_throwable($throwable);
+    });
+
+    set_error_handler(static function (int $severity, string $message, string $file = '', int $line = 0): bool {
+        if ((error_reporting() & $severity) === 0) {
+            return false;
+        }
+
+        throw new ErrorException($message, 0, $severity, $file, $line);
+    });
+
+    register_shutdown_function('handle_shutdown_error');
+}
+
+function require_autoload_file(): void
+{
+    $autoloadPath = __DIR__ . '/../vendor/autoload.php';
+    if (!is_file($autoloadPath)) {
+        error_response('Server dependencies are missing. Run composer install on the PHP host.', 500);
+    }
+
+    require_once $autoloadPath;
+
+    if (!extension_loaded('curl')) {
+        error_response('PHP cURL extension is required on the server.', 500);
+    }
 }
 
 function set_api_headers(): void
@@ -112,6 +145,20 @@ function env_value(string $key, ?string $default = null): ?string
     return $config[$key] ?? getenv($key) ?: $default;
 }
 
+function debug_enabled(): bool
+{
+    $flag = strtolower(trim((string) env_value('APP_DEBUG', '')));
+    if (in_array($flag, ['1', 'true', 'yes', 'on'], true)) {
+        return true;
+    }
+
+    $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    return $host === 'localhost'
+        || str_starts_with($host, 'localhost:')
+        || $host === '127.0.0.1'
+        || str_starts_with($host, '127.0.0.1:');
+}
+
 function require_env(string $key): string
 {
     $value = env_value($key);
@@ -142,6 +189,74 @@ function json_response(array $data, int $status = 200): never
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_SLASHES);
     exit;
+}
+
+function error_message_for_throwable(Throwable $throwable): string
+{
+    if (debug_enabled()) {
+        return sprintf(
+            '%s in %s:%d',
+            $throwable->getMessage(),
+            basename($throwable->getFile()),
+            $throwable->getLine()
+        );
+    }
+
+    return 'Verification service error. Please try again in a moment.';
+}
+
+function handle_uncaught_throwable(Throwable $throwable): never
+{
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'ok' => false,
+        'message' => error_message_for_throwable($throwable),
+    ], JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+function handle_shutdown_error(): void
+{
+    $error = error_get_last();
+    if (!is_array($error)) {
+        if (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+        return;
+    }
+
+    $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR];
+    if (!in_array($error['type'] ?? 0, $fatalTypes, true)) {
+        if (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+        return;
+    }
+
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    $message = debug_enabled()
+        ? sprintf(
+            '%s in %s:%d',
+            (string) ($error['message'] ?? 'Fatal error'),
+            basename((string) ($error['file'] ?? 'unknown')),
+            (int) ($error['line'] ?? 0)
+        )
+        : 'Verification service error. Please try again in a moment.';
+
+    http_response_code(500);
+    header('Content-Type: application/json');
+    echo json_encode([
+        'ok' => false,
+        'message' => $message,
+    ], JSON_UNESCAPED_SLASHES);
 }
 
 function error_response(string $message, int $status = 400, array $extra = []): never
