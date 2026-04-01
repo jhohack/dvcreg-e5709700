@@ -30,6 +30,7 @@ export type Database = {
           elem_address: string | null
           elem_school: string | null
           elem_year: string | null
+          email: string | null
           facebook_link: string | null
           father_contact: string | null
           father_first_name: string | null
@@ -95,6 +96,7 @@ export type Database = {
           elem_address?: string | null
           elem_school?: string | null
           elem_year?: string | null
+          email?: string | null
           facebook_link?: string | null
           father_contact?: string | null
           father_first_name?: string | null
@@ -160,6 +162,7 @@ export type Database = {
           elem_address?: string | null
           elem_school?: string | null
           elem_year?: string | null
+          email?: string | null
           facebook_link?: string | null
           father_contact?: string | null
           father_first_name?: string | null
@@ -310,6 +313,7 @@ export type Database = {
           elem_address: string | null
           elem_school: string | null
           elem_year: string | null
+          email: string | null
           facebook_link: string | null
           father_contact: string | null
           father_first_name: string | null
@@ -371,6 +375,7 @@ export type Database = {
           elem_address?: string | null
           elem_school?: string | null
           elem_year?: string | null
+          email?: string | null
           facebook_link?: string | null
           father_contact?: string | null
           father_first_name?: string | null
@@ -432,6 +437,7 @@ export type Database = {
           elem_address?: string | null
           elem_school?: string | null
           elem_year?: string | null
+          email?: string | null
           facebook_link?: string | null
           father_contact?: string | null
           father_first_name?: string | null
@@ -662,6 +668,7 @@ export type Database = {
           elem_address: string | null
           elem_school: string | null
           elem_year: string | null
+          email: string | null
           facebook_link: string | null
           father_contact: string | null
           father_first_name: string | null

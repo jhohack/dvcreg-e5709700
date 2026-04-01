@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Register from "./pages/Register";
 import AdminRecords from "./pages/AdminRecords";
 import NotFound from "./pages/NotFound";
-
+//test
 const queryClient = new QueryClient();
 
 const App = () => (
