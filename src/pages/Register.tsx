@@ -227,6 +227,10 @@ const maskEmail = (email: string) => {
 };
 
 const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
+  if (!configuredApiBase && isLovableHost) {
+    throw new Error(verificationServiceUnavailableMessage);
+  }
+
   let response: Response;
   try {
     response = await fetch(`${API_BASE}/${path}`, {
