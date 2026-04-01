@@ -30,6 +30,7 @@ export type Database = {
           elem_address: string | null
           elem_school: string | null
           elem_year: string | null
+          email: string | null
           facebook_link: string | null
           father_contact: string | null
           father_first_name: string | null
@@ -97,6 +98,7 @@ export type Database = {
           elem_address?: string | null
           elem_school?: string | null
           elem_year?: string | null
+          email?: string | null
           facebook_link?: string | null
           father_contact?: string | null
           father_first_name?: string | null
@@ -164,6 +166,7 @@ export type Database = {
           elem_address?: string | null
           elem_school?: string | null
           elem_year?: string | null
+          email?: string | null
           facebook_link?: string | null
           father_contact?: string | null
           father_first_name?: string | null
@@ -869,6 +872,51 @@ export type Database = {
           },
         ]
       }
+      registration_verifications: {
+        Row: {
+          attempt_count: number
+          code_hash: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          legacy_payload: Json
+          payload: Json
+          resend_count: number
+          updated_at: string
+          used_at: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          attempt_count?: number
+          code_hash: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          legacy_payload: Json
+          payload: Json
+          resend_count?: number
+          updated_at?: string
+          used_at?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          attempt_count?: number
+          code_hash?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          legacy_payload?: Json
+          payload?: Json
+          resend_count?: number
+          updated_at?: string
+          used_at?: string | null
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       school_years: {
         Row: {
           created_at: string
@@ -975,6 +1023,7 @@ export type Database = {
           elem_address: string | null
           elem_school: string | null
           elem_year: string | null
+          email: string | null
           facebook_link: string | null
           father_contact: string | null
           father_first_name: string | null
@@ -1018,6 +1067,7 @@ export type Database = {
           shs_track: string | null
           spouse_name: string | null
           student_lrn: string | null
+          student_school_id: string
           tribe: string | null
           vaccination_status: string | null
           year_level: string | null
@@ -1036,6 +1086,7 @@ export type Database = {
           elem_address?: string | null
           elem_school?: string | null
           elem_year?: string | null
+          email?: string | null
           facebook_link?: string | null
           father_contact?: string | null
           father_first_name?: string | null
@@ -1079,6 +1130,7 @@ export type Database = {
           shs_track?: string | null
           spouse_name?: string | null
           student_lrn?: string | null
+          student_school_id: string
           tribe?: string | null
           vaccination_status?: string | null
           year_level?: string | null
@@ -1097,6 +1149,7 @@ export type Database = {
           elem_address?: string | null
           elem_school?: string | null
           elem_year?: string | null
+          email?: string | null
           facebook_link?: string | null
           father_contact?: string | null
           father_first_name?: string | null
@@ -1140,6 +1193,7 @@ export type Database = {
           shs_track?: string | null
           spouse_name?: string | null
           student_lrn?: string | null
+          student_school_id?: string
           tribe?: string | null
           vaccination_status?: string | null
           year_level?: string | null
@@ -1573,6 +1627,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      generate_student_school_id: {
+        Args: { target_year?: number }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1600,6 +1658,10 @@ export type Database = {
         }
         Returns: string
       }
+      resolve_student_contact_email: {
+        Args: { legacy_contact: string; primary_email: string }
+        Returns: string
+      }
       review_admission: {
         Args: {
           admission_id_input: string
@@ -1622,6 +1684,7 @@ export type Database = {
           elem_address: string | null
           elem_school: string | null
           elem_year: string | null
+          email: string | null
           facebook_link: string | null
           father_contact: string | null
           father_first_name: string | null
