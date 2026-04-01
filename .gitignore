@@ -14,6 +14,7 @@ dist-ssr
 vendor/
 composer.phar
 .env.local
+deployment/out/
 
 # Editor directories and files
 .vscode/*
