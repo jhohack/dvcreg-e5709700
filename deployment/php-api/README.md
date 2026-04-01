@@ -1,0 +1,83 @@
+# PHP API Deployment
+
+This package is only for the `PHPMailer` verification backend.
+
+Use it when:
+- your frontend stays on Lovable or another frontend host
+- you want the verification email to still be sent with PHP
+
+## Easiest Hosting
+
+The simplest setup is a normal PHP host with file upload support. A shared host with cPanel is usually the fastest path because you can upload a zip, extract it, and add a `.env.local` file without changing the frontend stack.
+
+Recommended structure:
+- frontend: Lovable or any static/frontend host
+- backend: a PHP host at a separate URL such as `https://api.yourdomain.com`
+
+## What To Upload
+
+Upload the contents of the generated zip to your PHP site's root. The package includes:
+- `api/`
+- `vendor/`
+- `composer.json`
+- `composer.lock`
+- `.env.local.example`
+- this README
+
+Because `vendor/` is included, you do not need Composer on the server just to make `PHPMailer` work.
+
+## Server Setup
+
+1. Create a PHP site or subdomain.
+   Example: `https://api.yourdomain.com`
+2. Upload and extract the backend zip into that site's root.
+3. Duplicate `.env.local.example` to `.env.local`.
+4. Fill in the real values in `.env.local`.
+5. Make sure PHP cURL is enabled on the host.
+6. If your host supports SSL, use `https`.
+
+## Required `.env.local` Values
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_email@gmail.com
+SMTP_PASSWORD=your_gmail_app_password
+SMTP_SECURE=tls
+MAIL_FROM_ADDRESS=your_email@gmail.com
+MAIL_FROM_NAME=DVC Registration
+MAIL_CODE_TTL_MINUTES=10
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+ALLOWED_ORIGINS=https://your-lovable-site.lovable.app,https://your-custom-domain.com
+```
+
+## Frontend Setup
+
+In Lovable, set:
+
+```env
+VITE_API_BASE_URL=https://api.yourdomain.com/api
+```
+
+Then republish the frontend.
+
+## Quick Test
+
+Open:
+
+`https://api.yourdomain.com/api/send-verification-code.php`
+
+Expected result:
+- JSON response
+- status `405`
+- message similar to `Method not allowed.`
+
+That confirms PHP is running the endpoint.
+
+## Notes
+
+- `PHPMailer` needs a real PHP runtime. A frontend-only host cannot run it.
+- Keep `.env.local` on the PHP host only.
+- Do not upload your local `.env.local` file from this machine.
+- Rotate the Gmail app password before production use if it was ever shared.
