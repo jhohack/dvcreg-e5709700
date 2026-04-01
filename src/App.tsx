@@ -8,7 +8,7 @@ import AdminRecords from "./pages/AdminRecords";
 import NotFound from "./pages/NotFound";
 //test
 const queryClient = new QueryClient();
-
+//test
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
