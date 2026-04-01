@@ -206,9 +206,6 @@ const buildSubmissionPayloads = ({
 
   const payload: TablesInsert<"admission"> = {
     ...legacyPayload,
-    education_level: selectedEducationLevel || null,
-    program: form.program || null,
-    level: form.level || null,
   };
 
   return { payload, legacyPayload };
