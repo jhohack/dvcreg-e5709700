@@ -1,10 +1,10 @@
 # PHP API Deployment
 
-This package is only for the `PHPMailer` verification backend.
+This package is a standalone PHP verification backend.
 
 Use it when:
 - your frontend stays on Lovable or another frontend host
-- you want the verification email to still be sent with PHP
+- you want the verification email to be sent from PHP over SMTP
 
 ## Easiest Hosting
 
@@ -18,13 +18,10 @@ Recommended structure:
 
 Upload the contents of the generated zip to your PHP site's root. The package includes:
 - `api/`
-- `vendor/`
-- `composer.json`
-- `composer.lock`
 - `.env.local.example`
 - this README
 
-Because `vendor/` is included, you do not need Composer on the server just to make `PHPMailer` work.
+No Composer install is required on the server.
 
 ## Server Setup
 
@@ -33,7 +30,7 @@ Because `vendor/` is included, you do not need Composer on the server just to ma
 2. Upload and extract the backend zip into that site's root.
 3. Duplicate `.env.local.example` to `.env.local`.
 4. Fill in the real values in `.env.local`.
-5. Make sure PHP cURL is enabled on the host.
+5. Make sure PHP `cURL` and `OpenSSL` are enabled on the host.
 6. If your host supports SSL, use `https`.
 
 ## Required `.env.local` Values
@@ -47,6 +44,7 @@ SMTP_SECURE=tls
 MAIL_FROM_ADDRESS=your_email@gmail.com
 MAIL_FROM_NAME=DVC Registration
 MAIL_CODE_TTL_MINUTES=10
+SMTP_TIMEOUT_SECONDS=20
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ALLOWED_ORIGINS=https://your-lovable-site.lovable.app,https://your-custom-domain.com
@@ -77,7 +75,8 @@ That confirms PHP is running the endpoint.
 
 ## Notes
 
-- `PHPMailer` needs a real PHP runtime. A frontend-only host cannot run it.
+- This backend still needs a real PHP runtime. A frontend-only host cannot run it.
+- `SMTP_SECURE` can be `tls`, `ssl`, or `none`.
 - Keep `.env.local` on the PHP host only.
 - Do not upload your local `.env.local` file from this machine.
 - Rotate the Gmail app password before production use if it was ever shared.

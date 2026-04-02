@@ -1,11 +1,8 @@
 <?php
 declare(strict_types=1);
 
-use PHPMailer\PHPMailer\Exception as MailerException;
-use PHPMailer\PHPMailer\PHPMailer;
-
 bootstrap_runtime();
-require_autoload_file();
+require_runtime_extensions();
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     http_response_code(204);
@@ -32,15 +29,8 @@ function bootstrap_runtime(): void
     register_shutdown_function('handle_shutdown_error');
 }
 
-function require_autoload_file(): void
+function require_runtime_extensions(): void
 {
-    $autoloadPath = __DIR__ . '/../vendor/autoload.php';
-    if (!is_file($autoloadPath)) {
-        error_response('Server dependencies are missing. Run composer install on the PHP host.', 500);
-    }
-
-    require_once $autoloadPath;
-
     if (!extension_loaded('curl')) {
         error_response('PHP cURL extension is required on the server.', 500);
     }
@@ -409,39 +399,297 @@ function insert_admission_payloads(string $id, array $payload, array $legacyPayl
     error_response('Verification succeeded, but saving the registration failed.', 500);
 }
 
-function send_verification_email(string $recipientEmail, string $code, int $ttlMinutes): void
+function smtp_client_hostname(): string
 {
-    $mail = new PHPMailer(true);
+    $hostname = trim((string) gethostname());
+    if ($hostname === '') {
+        return 'localhost';
+    }
+
+    $sanitized = preg_replace('/[^A-Za-z0-9.-]/', '-', $hostname);
+    return $sanitized !== null && $sanitized !== '' ? $sanitized : 'localhost';
+}
+
+function smtp_security_mode(): string
+{
+    $mode = strtolower(trim((string) env_value('SMTP_SECURE', 'tls')));
+
+    return match ($mode) {
+        '', 'none', 'off' => 'none',
+        'ssl', 'smtps' => 'ssl',
+        default => 'tls',
+    };
+}
+
+function smtp_timeout_seconds(): float
+{
+    $configuredTimeout = (float) env_value('SMTP_TIMEOUT_SECONDS', '20');
+    return $configuredTimeout > 0 ? $configuredTimeout : 20.0;
+}
+
+function smtp_connection_target(string $host, int $port, string $security): string
+{
+    $protocol = $security === 'ssl' ? 'ssl' : 'tcp';
+    return sprintf('%s://%s:%d', $protocol, $host, $port);
+}
+
+/**
+ * @return resource
+ */
+function smtp_open_connection()
+{
+    $host = require_env('SMTP_HOST');
+    $port = (int) require_env('SMTP_PORT');
+    $security = smtp_security_mode();
+
+    if ($security !== 'none' && !extension_loaded('openssl')) {
+        throw new RuntimeException('PHP OpenSSL extension is required for SMTP encryption.');
+    }
+
+    $context = stream_context_create([
+        'ssl' => [
+            'verify_peer' => true,
+            'verify_peer_name' => true,
+            'allow_self_signed' => false,
+        ],
+    ]);
+
+    $target = smtp_connection_target($host, $port, $security);
+    $socket = @stream_socket_client(
+        $target,
+        $errorCode,
+        $errorMessage,
+        smtp_timeout_seconds(),
+        STREAM_CLIENT_CONNECT,
+        $context
+    );
+
+    if (!is_resource($socket)) {
+        throw new RuntimeException(
+            sprintf('Unable to connect to the SMTP server (%s).', $errorMessage !== '' ? $errorMessage : $host)
+        );
+    }
+
+    stream_set_timeout($socket, (int) ceil(smtp_timeout_seconds()));
+
+    return $socket;
+}
+
+/**
+ * @param resource $socket
+ * @return array{code:int,message:string}
+ */
+function smtp_read_response($socket): array
+{
+    $responseLines = [];
+
+    while (true) {
+        $line = fgets($socket, 515);
+        if ($line === false) {
+            $metadata = stream_get_meta_data($socket);
+            if (($metadata['timed_out'] ?? false) === true) {
+                throw new RuntimeException('Timed out while waiting for the SMTP server.');
+            }
+
+            throw new RuntimeException('The SMTP server closed the connection unexpectedly.');
+        }
+
+        $responseLines[] = rtrim($line, "\r\n");
+
+        if (strlen($line) < 4 || $line[3] !== '-') {
+            break;
+        }
+    }
+
+    $firstLine = $responseLines[0] ?? '';
+    $statusCode = (int) substr($firstLine, 0, 3);
+
+    return [
+        'code' => $statusCode,
+        'message' => trim(implode(' ', $responseLines)),
+    ];
+}
+
+/**
+ * @param resource $socket
+ */
+function smtp_write_line($socket, string $line): void
+{
+    $bytesWritten = fwrite($socket, $line . "\r\n");
+    if ($bytesWritten === false) {
+        throw new RuntimeException('Failed to write to the SMTP server.');
+    }
+}
+
+/**
+ * @param resource $socket
+ */
+function smtp_assert_response($socket, array $expectedCodes, string $context, bool $sensitive = false): string
+{
+    $response = smtp_read_response($socket);
+    if (!in_array($response['code'], $expectedCodes, true)) {
+        $contextLabel = $sensitive ? '[redacted]' : $context;
+        throw new RuntimeException(sprintf('SMTP command failed (%s): %s', $contextLabel, $response['message']));
+    }
+
+    return $response['message'];
+}
+
+/**
+ * @param resource $socket
+ */
+function smtp_command($socket, string $command, array $expectedCodes, bool $sensitive = false): string
+{
+    smtp_write_line($socket, $command);
+    return smtp_assert_response($socket, $expectedCodes, $command, $sensitive);
+}
+
+/**
+ * @param resource $socket
+ */
+function smtp_enable_starttls($socket): void
+{
+    $enabled = @stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+    if ($enabled !== true) {
+        throw new RuntimeException('Failed to negotiate TLS with the SMTP server.');
+    }
+}
+
+function encode_mail_header(string $value): string
+{
+    return preg_match('/^[\x20-\x7E]+$/', $value) === 1
+        ? $value
+        : '=?UTF-8?B?' . base64_encode($value) . '?=';
+}
+
+function format_email_address(string $email, ?string $name = null): string
+{
+    $address = trim($email);
+    if ($name === null || trim($name) === '') {
+        return sprintf('<%s>', $address);
+    }
+
+    return sprintf('%s <%s>', encode_mail_header(trim($name)), $address . '>');
+}
+
+function normalize_mail_body(string $body): string
+{
+    return str_replace(["\r\n", "\r"], "\n", $body);
+}
+
+function encode_mail_body(string $body): string
+{
+    return rtrim(chunk_split(base64_encode(normalize_mail_body($body)), 76, "\r\n"));
+}
+
+function smtp_build_message(
+    string $fromAddress,
+    string $fromName,
+    string $recipientEmail,
+    string $subject,
+    string $htmlBody,
+    string $textBody
+): string {
+    $boundary = 'b' . bin2hex(random_bytes(16));
+
+    $headers = [
+        'Date: ' . gmdate('D, d M Y H:i:s O'),
+        'From: ' . format_email_address($fromAddress, $fromName),
+        'To: ' . format_email_address($recipientEmail),
+        'Subject: ' . encode_mail_header($subject),
+        'MIME-Version: 1.0',
+        sprintf('Content-Type: multipart/alternative; boundary="%s"', $boundary),
+    ];
+
+    $body = [
+        "--{$boundary}",
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: base64',
+        '',
+        encode_mail_body($textBody),
+        '',
+        "--{$boundary}",
+        'Content-Type: text/html; charset=UTF-8',
+        'Content-Transfer-Encoding: base64',
+        '',
+        encode_mail_body($htmlBody),
+        '',
+        "--{$boundary}--",
+    ];
+
+    return implode("\r\n", [...$headers, '', ...$body]);
+}
+
+function smtp_escape_data(string $message): string
+{
+    $normalized = str_replace(["\r\n", "\r"], "\n", $message);
+    $escaped = preg_replace('/^\./m', '..', $normalized);
+    $prepared = $escaped ?? $normalized;
+
+    return str_replace("\n", "\r\n", $prepared) . "\r\n.\r\n";
+}
+
+function smtp_send_email(
+    string $fromAddress,
+    string $fromName,
+    string $recipientEmail,
+    string $subject,
+    string $htmlBody,
+    string $textBody
+): void {
+    $security = smtp_security_mode();
+    $username = require_env('SMTP_USERNAME');
+    $password = require_env('SMTP_PASSWORD');
+    $socket = smtp_open_connection();
 
     try {
-        $mail->isSMTP();
-        $mail->Host = require_env('SMTP_HOST');
-        $mail->SMTPAuth = true;
-        $mail->Username = require_env('SMTP_USERNAME');
-        $mail->Password = require_env('SMTP_PASSWORD');
-        $mail->Port = (int) require_env('SMTP_PORT');
-        $mail->CharSet = 'UTF-8';
+        smtp_assert_response($socket, [220], 'connect');
+        smtp_command($socket, 'EHLO ' . smtp_client_hostname(), [250]);
 
-        $smtpSecure = strtolower((string) env_value('SMTP_SECURE', 'tls'));
-        $mail->SMTPSecure = $smtpSecure === 'ssl'
-            ? PHPMailer::ENCRYPTION_SMTPS
-            : PHPMailer::ENCRYPTION_STARTTLS;
+        if ($security === 'tls') {
+            smtp_command($socket, 'STARTTLS', [220]);
+            smtp_enable_starttls($socket);
+            smtp_command($socket, 'EHLO ' . smtp_client_hostname(), [250]);
+        }
 
-        $mail->setFrom(
+        smtp_command($socket, 'AUTH LOGIN', [334]);
+        smtp_command($socket, base64_encode($username), [334], true);
+        smtp_command($socket, base64_encode($password), [235], true);
+        smtp_command($socket, sprintf('MAIL FROM:<%s>', $fromAddress), [250]);
+        smtp_command($socket, sprintf('RCPT TO:<%s>', $recipientEmail), [250, 251]);
+        smtp_command($socket, 'DATA', [354]);
+
+        $message = smtp_build_message($fromAddress, $fromName, $recipientEmail, $subject, $htmlBody, $textBody);
+        $bytesWritten = fwrite($socket, smtp_escape_data($message));
+        if ($bytesWritten === false) {
+            throw new RuntimeException('Failed to send the email body to the SMTP server.');
+        }
+
+        smtp_assert_response($socket, [250], 'DATA');
+        smtp_command($socket, 'QUIT', [221]);
+    } finally {
+        if (is_resource($socket)) {
+            fclose($socket);
+        }
+    }
+}
+
+function send_verification_email(string $recipientEmail, string $code, int $ttlMinutes): void
+{
+    try {
+        smtp_send_email(
             env_value('MAIL_FROM_ADDRESS', require_env('SMTP_USERNAME')),
-            env_value('MAIL_FROM_NAME', 'DVC Registration')
+            env_value('MAIL_FROM_NAME', 'DVC Registration'),
+            $recipientEmail,
+            'Your DVC registration verification code',
+            sprintf(
+                '<p>Your verification code is:</p><p style="font-size: 28px; font-weight: 700; letter-spacing: 6px;">%s</p><p>This code will expire in %d minutes.</p><p>If you did not request this, you can ignore this email.</p>',
+                htmlspecialchars($code, ENT_QUOTES, 'UTF-8'),
+                $ttlMinutes
+            ),
+            "Your DVC registration verification code is {$code}. It expires in {$ttlMinutes} minutes."
         );
-        $mail->addAddress($recipientEmail);
-        $mail->isHTML(true);
-        $mail->Subject = 'Your DVC registration verification code';
-        $mail->Body = sprintf(
-            '<p>Your verification code is:</p><p style="font-size: 28px; font-weight: 700; letter-spacing: 6px;">%s</p><p>This code will expire in %d minutes.</p><p>If you did not request this, you can ignore this email.</p>',
-            htmlspecialchars($code, ENT_QUOTES, 'UTF-8'),
-            $ttlMinutes
-        );
-        $mail->AltBody = "Your DVC registration verification code is {$code}. It expires in {$ttlMinutes} minutes.";
-        $mail->send();
-    } catch (MailerException $exception) {
+    } catch (Throwable $exception) {
         throw new RuntimeException('Failed to send the verification email. Please try again.', 0, $exception);
     }
 }
