@@ -39,10 +39,10 @@ const FORM_STORAGE_KEY = "dvcreg-registration-form";
 const VERIFICATION_STORAGE_KEY = "dvcreg-registration-verification";
 const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
 const isLovableHost = typeof window !== "undefined" && /(?:^|\.)lovable\.(?:app|dev)$/.test(window.location.hostname);
-const API_BASE = configuredApiBase || (import.meta.env.DEV ? "/api" : "api");
+const API_BASE = configuredApiBase || "/api";
 
 const verificationServiceUnavailableMessage = isLovableHost
-  ? "Email verification is not configured for Lovable yet. Host the PHP API and set VITE_API_BASE_URL to that public /api URL."
+  ? "Verification service is unavailable. Set VITE_API_BASE_URL to your public PHP /api URL or route /api to that backend."
   : "Verification service is unavailable right now. Make sure the PHP API is running.";
 
 const initialForm = {
@@ -224,10 +224,6 @@ const maskEmail = (email: string) => {
 };
 
 const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
-  if (!configuredApiBase && isLovableHost) {
-    throw new Error(verificationServiceUnavailableMessage);
-  }
-
   let response: Response;
   try {
     response = await fetch(`${API_BASE}/${path}`, {
