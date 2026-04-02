@@ -34,16 +34,18 @@ import {
   normalizeEducationLevel,
 } from "@/lib/academicCatalog";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { supabase } from "@/integrations/supabase/client";
 
 const FORM_STORAGE_KEY = "dvcreg-registration-form";
 const VERIFICATION_STORAGE_KEY = "dvcreg-registration-verification";
 const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
-const isLovableHost = typeof window !== "undefined" && /(?:^|\.)lovable\.(?:app|dev)$/.test(window.location.hostname);
-const API_BASE = configuredApiBase || "/api";
+const verificationServiceUnavailableMessage = "Verification service is unavailable right now. Please try again in a moment.";
+const phpApiUnavailableMessage = "Verification service is unavailable right now. Make sure the PHP API is running.";
 
-const verificationServiceUnavailableMessage = isLovableHost
-  ? "Verification service is unavailable. Set VITE_API_BASE_URL to your public PHP /api URL or route /api to that backend."
-  : "Verification service is unavailable right now. Make sure the PHP API is running.";
+const verificationFunctionByPath: Record<string, string> = {
+  "send-verification-code.php": "send-verification-code",
+  "verify-registration-code.php": "verify-registration-code",
+};
 
 const initialForm = {
   first_name: "", last_name: "", middle_name: "",
@@ -223,10 +225,11 @@ const maskEmail = (email: string) => {
   return `${visibleStart}${maskedMiddle}${visibleEnd}@${domain}`;
 };
 
-const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
+const postJsonToPhpApi = async <T,>(path: string, body: unknown): Promise<T> => {
   let response: Response;
+
   try {
-    response = await fetch(`${API_BASE}/${path}`, {
+    response = await fetch(`${configuredApiBase}/${path}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -234,7 +237,7 @@ const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
       body: JSON.stringify(body),
     });
   } catch {
-    throw new Error(verificationServiceUnavailableMessage);
+    throw new Error(phpApiUnavailableMessage);
   }
 
   const contentType = response.headers.get("content-type") ?? "";
@@ -244,7 +247,7 @@ const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
 
   if (!response.ok || !data?.ok) {
     const message = data?.message
-      || (response.status === 404 ? verificationServiceUnavailableMessage : null)
+      || (response.status === 404 ? phpApiUnavailableMessage : null)
       || (response.status >= 500 ? "Verification service error. Please try again in a moment." : null)
       || "Request failed.";
 
@@ -252,6 +255,44 @@ const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
   }
 
   return data as T;
+};
+
+const postJsonToEdgeFunction = async <T,>(path: string, body: unknown): Promise<T> => {
+  const functionName = verificationFunctionByPath[path];
+  if (!functionName) {
+    throw new Error("Unsupported verification request.");
+  }
+
+  const { data, error } = await supabase.functions.invoke(functionName, {
+    body,
+  });
+
+  if (error) {
+    const functionError = error as Error & { context?: Response };
+
+    if (functionError.context instanceof Response) {
+      const responseData = await functionError.context.json().catch(() => null);
+      if (responseData?.message) {
+        throw new Error(responseData.message);
+      }
+    }
+
+    throw new Error(functionError.message || verificationServiceUnavailableMessage);
+  }
+
+  if (!data?.ok) {
+    throw new Error(data?.message || "Request failed.");
+  }
+
+  return data as T;
+};
+
+const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
+  if (configuredApiBase) {
+    return await postJsonToPhpApi<T>(path, body);
+  }
+
+  return await postJsonToEdgeFunction<T>(path, body);
 };
 
 const Register = () => {
