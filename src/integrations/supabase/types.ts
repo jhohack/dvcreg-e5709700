@@ -938,6 +938,62 @@ export type Database = {
         }
         Relationships: []
       }
+      student_documents: {
+        Row: {
+          created_at: string
+          document_group_key: string
+          document_type_id: string
+          file_mime_type: string | null
+          file_name: string
+          file_size_bytes: number
+          id: string
+          storage_bucket: string
+          storage_path: string
+          student_information_id: string
+          title: string
+          updated_at: string
+          uploaded_at: string
+        }
+        Insert: {
+          created_at?: string
+          document_group_key: string
+          document_type_id: string
+          file_mime_type?: string | null
+          file_name: string
+          file_size_bytes: number
+          id?: string
+          storage_bucket?: string
+          storage_path: string
+          student_information_id: string
+          title: string
+          updated_at?: string
+          uploaded_at?: string
+        }
+        Update: {
+          created_at?: string
+          document_group_key?: string
+          document_type_id?: string
+          file_mime_type?: string | null
+          file_name?: string
+          file_size_bytes?: number
+          id?: string
+          storage_bucket?: string
+          storage_path?: string
+          student_information_id?: string
+          title?: string
+          updated_at?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_documents_student_information_id_fkey"
+            columns: ["student_information_id"]
+            isOneToOne: false
+            referencedRelation: "student_information"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_enrollments: {
         Row: {
           course: string | null
@@ -1200,6 +1256,63 @@ export type Database = {
         }
         Relationships: []
       }
+      student_portal_accounts: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string
+          credentials_sent_at: string | null
+          id: string
+          last_sign_in_at: string | null
+          login_email: string
+          must_change_password: boolean
+          portal_enabled: boolean
+          student_information_id: string
+          student_profile_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string
+          credentials_sent_at?: string | null
+          id?: string
+          last_sign_in_at?: string | null
+          login_email: string
+          must_change_password?: boolean
+          portal_enabled?: boolean
+          student_information_id: string
+          student_profile_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string
+          credentials_sent_at?: string | null
+          id?: string
+          last_sign_in_at?: string | null
+          login_email?: string
+          must_change_password?: boolean
+          portal_enabled?: boolean
+          student_information_id?: string
+          student_profile_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_portal_accounts_student_information_id_fkey"
+            columns: ["student_information_id"]
+            isOneToOne: true
+            referencedRelation: "student_information"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_portal_accounts_student_profile_id_fkey"
+            columns: ["student_profile_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_profiles: {
         Row: {
           created_at: string
@@ -1263,6 +1376,35 @@ export type Database = {
           },
         ]
       }
+      subject_curriculum_labels: {
+        Row: {
+          created_at: string
+          curriculum_label: string
+          id: string
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          curriculum_label: string
+          id?: string
+          subject_id: string
+        }
+        Update: {
+          created_at?: string
+          curriculum_label?: string
+          id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_curriculum_labels_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subject_prerequisites: {
         Row: {
           created_at: string
@@ -1301,6 +1443,7 @@ export type Database = {
       }
       subjects: {
         Row: {
+          academic_year: string | null
           code: string
           coverage_mode: string
           created_at: string
@@ -1309,6 +1452,7 @@ export type Database = {
           default_semester: string | null
           default_year_level: string | null
           description: string
+          education_level: string | null
           id: string
           status: string
           subject_type: string
@@ -1317,6 +1461,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          academic_year?: string | null
           code: string
           coverage_mode: string
           created_at?: string
@@ -1325,6 +1470,7 @@ export type Database = {
           default_semester?: string | null
           default_year_level?: string | null
           description: string
+          education_level?: string | null
           id?: string
           status?: string
           subject_type: string
@@ -1333,6 +1479,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          academic_year?: string | null
           code?: string
           coverage_mode?: string
           created_at?: string
@@ -1341,6 +1488,7 @@ export type Database = {
           default_semester?: string | null
           default_year_level?: string | null
           description?: string
+          education_level?: string | null
           id?: string
           status?: string
           subject_type?: string
@@ -1398,6 +1546,39 @@ export type Database = {
         }
         Relationships: []
       }
+      system_curriculum_registry: {
+        Row: {
+          academic_year: string
+          created_at: string
+          created_by: string | null
+          curriculum_label: string
+          id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          academic_year: string
+          created_at?: string
+          created_by?: string | null
+          curriculum_label: string
+          id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          academic_year?: string
+          created_at?: string
+          created_by?: string | null
+          curriculum_label?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       system_program_levels: {
         Row: {
           created_at: string
@@ -1440,6 +1621,7 @@ export type Database = {
           education_level: string
           id: string
           program_name: string
+          subject_types: string[]
           updated_at: string
           updated_by: string | null
         }
@@ -1449,6 +1631,7 @@ export type Database = {
           education_level: string
           id?: string
           program_name: string
+          subject_types?: string[]
           updated_at?: string
           updated_by?: string | null
         }
@@ -1458,8 +1641,33 @@ export type Database = {
           education_level?: string
           id?: string
           program_name?: string
+          subject_types?: string[]
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      system_saved_academic_periods: {
+        Row: {
+          academic_year: string
+          created_at: string
+          created_by: string | null
+          id: string
+          semester: string
+        }
+        Insert: {
+          academic_year: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          semester: string
+        }
+        Update: {
+          academic_year?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          semester?: string
         }
         Relationships: []
       }
@@ -1581,16 +1789,53 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_saved_academic_period: {
+        Args: {
+          academic_year_input: string
+          semester_input: string
+          updated_by_input?: string
+        }
+        Returns: {
+          current_academic_year: string
+          current_semester: string
+          singleton: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "system_academic_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       check_exam_week_student_status: { Args: never; Returns: undefined }
       compute_student_enrollment_rollover_balance: {
         Args: { _student_enrollment_id: string }
         Returns: number
+      }
+      create_saved_academic_year: {
+        Args: { academic_year_input: string; created_by_input?: string }
+        Returns: {
+          academic_year: string
+          created_at: string
+          created_by: string | null
+          id: string
+          semester: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "system_saved_academic_periods"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       create_system_program: {
         Args: {
           education_level_input: string
           levels_input: string[]
           program_name_input: string
+          subject_types_input?: string[]
           updated_by_input?: string
         }
         Returns: {
@@ -1599,6 +1844,7 @@ export type Database = {
           education_level: string
           id: string
           program_name: string
+          subject_types: string[]
           updated_at: string
           updated_by: string | null
         }
@@ -1617,6 +1863,7 @@ export type Database = {
           education_level: string
           id: string
           program_name: string
+          subject_types: string[]
           updated_at: string
           updated_by: string | null
         }
@@ -1631,6 +1878,7 @@ export type Database = {
         Args: { target_year?: number }
         Returns: string
       }
+      get_student_information_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1744,6 +1992,37 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_curriculum_registry_entry: {
+        Args: {
+          academic_year_input?: string
+          curriculum_id_input?: string
+          curriculum_name_input?: string
+          curriculum_version_input?: string
+          program_id_input?: string
+          status_input?: string
+          updated_by_input?: string
+        }
+        Returns: {
+          academic_year: string
+          copied_from_curriculum_id: string | null
+          created_at: string
+          created_by: string | null
+          curriculum_name: string
+          curriculum_version: string
+          department: string
+          id: string
+          program_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "curricula"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_curriculum_structure: {
         Args: {
           academic_year_input?: string
@@ -1778,45 +2057,119 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      save_subject_catalog_entry: {
+      save_global_curriculum_registry_entry: {
         Args: {
-          code_input?: string
-          coverage_mode_input?: string
-          coverage_program_ids_input?: string[]
+          academic_year_input?: string
           curriculum_label_input?: string
-          default_semester_input?: string
-          default_year_level_input?: string
-          description_input?: string
-          prerequisite_subject_ids_input?: string[]
+          registry_entry_id_input?: string
           status_input?: string
-          subject_id_input?: string
-          subject_type_input?: string
-          units_input?: number
           updated_by_input?: string
         }
         Returns: {
-          code: string
-          coverage_mode: string
+          academic_year: string
           created_at: string
           created_by: string | null
-          curriculum_label: string | null
-          default_semester: string | null
-          default_year_level: string | null
-          description: string
+          curriculum_label: string
           id: string
           status: string
-          subject_type: string
-          units: number
           updated_at: string
           updated_by: string | null
         }
         SetofOptions: {
           from: "*"
-          to: "subjects"
+          to: "system_curriculum_registry"
           isOneToOne: true
           isSetofReturn: false
         }
       }
+      save_subject_catalog_entry:
+        | {
+            Args: {
+              academic_year_input?: string
+              code_input?: string
+              coverage_mode_input?: string
+              coverage_program_ids_input?: string[]
+              curriculum_label_input?: string
+              curriculum_labels_input?: string[]
+              default_semester_input?: string
+              default_year_level_input?: string
+              description_input?: string
+              education_level_input?: string
+              prerequisite_subject_ids_input?: string[]
+              status_input?: string
+              subject_id_input?: string
+              subject_type_input?: string
+              units_input?: number
+              updated_by_input?: string
+            }
+            Returns: {
+              academic_year: string | null
+              code: string
+              coverage_mode: string
+              created_at: string
+              created_by: string | null
+              curriculum_label: string | null
+              default_semester: string | null
+              default_year_level: string | null
+              description: string
+              education_level: string | null
+              id: string
+              status: string
+              subject_type: string
+              units: number
+              updated_at: string
+              updated_by: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "subjects"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              academic_year_input?: string
+              code_input?: string
+              coverage_mode_input?: string
+              coverage_program_ids_input?: string[]
+              curriculum_label_input?: string
+              default_semester_input?: string
+              default_year_level_input?: string
+              description_input?: string
+              education_level_input?: string
+              prerequisite_subject_ids_input?: string[]
+              status_input?: string
+              subject_id_input?: string
+              subject_type_input?: string
+              units_input?: number
+              updated_by_input?: string
+            }
+            Returns: {
+              academic_year: string | null
+              code: string
+              coverage_mode: string
+              created_at: string
+              created_by: string | null
+              curriculum_label: string | null
+              default_semester: string | null
+              default_year_level: string | null
+              description: string
+              education_level: string | null
+              id: string
+              status: string
+              subject_type: string
+              units: number
+              updated_at: string
+              updated_by: string | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "subjects"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       set_global_academic_settings: {
         Args: {
           academic_year_input: string
@@ -1846,6 +2199,7 @@ export type Database = {
           levels_input: string[]
           program_id_input: string
           program_name_input: string
+          subject_types_input?: string[]
           updated_by_input?: string
         }
         Returns: {
@@ -1854,6 +2208,7 @@ export type Database = {
           education_level: string
           id: string
           program_name: string
+          subject_types: string[]
           updated_at: string
           updated_by: string | null
         }
@@ -1866,7 +2221,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "superadmin" | "admin" | "user"
+      app_role: "superadmin" | "admin" | "user" | "student" | "registrar"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1994,7 +2349,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["superadmin", "admin", "user"],
+      app_role: ["superadmin", "admin", "user", "student", "registrar"],
     },
   },
 } as const
