@@ -16,6 +16,7 @@ import {
   getEducationLevelLabel,
   normalizeEducationLevel,
 } from "@/lib/academicCatalog";
+import { normalizeFacebookLink } from "@/lib/facebook";
 
 interface Student {
   id: string;
@@ -31,7 +32,7 @@ interface Student {
   level: string | null;
   year_level: string | null;
   date_created: string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 const fieldLabels: Record<string, string> = {
@@ -40,7 +41,7 @@ const fieldLabels: Record<string, string> = {
   gender: "Gender", civil_status: "Civil Status", spouse_name: "Spouse Name",
   nationality: "Nationality", religion: "Religion", tribe: "Tribe",
   vaccination_status: "Vaccination Status", address: "Permanent Address",
-  current_address: "Current Address", contact: "Contact", email: "Email Address", facebook_link: "Facebook",
+  current_address: "Current Address", contact: "Contact", email: "Email Address", facebook_link: "Facebook Profile",
   parent_guardian: "Primary Guardian", parent_guardian_relation: "Relation",
   parent_guardian_address: "Guardian Address", parent_guardian_contact: "Guardian Contact",
   sec_parent_guardian: "Secondary Guardian", sec_parent_guardian_relation: "Relation",
@@ -84,10 +85,10 @@ const AdminRecords = () => {
     const { data, error } = await supabase
       .from("admission")
       .select("*")
-      .order("date_created", { ascending: false }) as any;
+      .order("date_created", { ascending: false });
 
     if (!error && data) {
-      setStudents(data);
+      setStudents(data as Student[]);
     }
 
     setLoading(false);
@@ -294,16 +295,32 @@ const AdminRecords = () => {
                 if (key === "year_level" && selected.level) return null;
 
                 const val = selected[key];
-                if (!val && val !== 0) return null;
+                const stringValue = typeof val === "string" ? val.trim() : String(val);
+                if (!stringValue && val !== 0) return null;
 
                 const displayValue = key === "education_level"
-                  ? getEducationLevelLabel(String(val))
-                  : String(val);
+                  ? getEducationLevelLabel(stringValue)
+                  : key === "facebook_link"
+                    ? normalizeFacebookLink(stringValue)
+                    : stringValue;
+
+                if (key === "facebook_link" && !displayValue) return null;
 
                 return (
                   <div key={key}>
                     <p className="text-xs text-muted-foreground">{label}</p>
-                    <p className="text-sm font-medium text-foreground">{displayValue}</p>
+                    {key === "facebook_link" ? (
+                      <a
+                        href={displayValue}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm font-medium text-primary underline underline-offset-4 break-all hover:text-primary/80"
+                      >
+                        {displayValue}
+                      </a>
+                    ) : (
+                      <p className="text-sm font-medium text-foreground">{displayValue}</p>
+                    )}
                   </div>
                 );
               })}

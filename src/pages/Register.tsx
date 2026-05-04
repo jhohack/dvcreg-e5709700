@@ -33,6 +33,7 @@ import {
   getLegacyDepartmentLabel,
   normalizeEducationLevel,
 } from "@/lib/academicCatalog";
+import { normalizeFacebookLink } from "@/lib/facebook";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -199,6 +200,7 @@ const buildSubmissionPayloads = ({
     date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString().split("T")[0] : null,
     age: form.age ? parseInt(form.age, 10) : null,
     monthly_income: form.monthly_income ? parseInt(form.monthly_income.replace(/,/g, ""), 10) : null,
+    facebook_link: normalizeFacebookLink(form.facebook_link) || null,
     department: getLegacyDepartmentLabel(selectedEducationLevel) || null,
     course: isCollege ? form.program || null : null,
     shs_track: isSHS ? form.program || null : null,
@@ -373,6 +375,7 @@ const Register = () => {
     : selectedProgram
       ? academicCatalogQuery.data?.levelsByProgramId[selectedProgram.id] ?? []
       : [];
+  const facebookProfileLink = normalizeFacebookLink(form.facebook_link);
 
   const setEducationLevel = (value: string) =>
     setForm((prev) => ({
@@ -682,7 +685,30 @@ const Register = () => {
               </div>
               <TextField label="Contact Number" name="contact" type="tel" required value={form.contact} onChange={set("contact")} />
               <TextField label="Email Address" name="email" type="email" required value={form.email} onChange={set("email")} />
-              <TextField label="Facebook Link" name="facebook_link" required value={form.facebook_link} onChange={set("facebook_link")} />
+              <div className="space-y-1.5">
+                <TextField
+                  label="Facebook Profile Link"
+                  name="facebook_link"
+                  required
+                  value={form.facebook_link}
+                  onChange={set("facebook_link")}
+                  placeholder="facebook.com/yourname or @yourname"
+                />
+                {facebookProfileLink ? (
+                  <a
+                    href={facebookProfileLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block text-xs break-all text-primary underline underline-offset-4 hover:text-primary/80"
+                  >
+                    Preview: {facebookProfileLink}
+                  </a>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Paste a Facebook profile link or username. We&apos;ll turn it into a clickable link.
+                  </p>
+                )}
+              </div>
             </div>
           </FormSection>
 
