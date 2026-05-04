@@ -53,7 +53,7 @@ const initialForm = {
   age: "", place_of_birth: "", gender: "", civil_status: "",
   spouse_name: "", nationality: "Filipino", religion: "", religion_other: "", tribe: "", tribe_other: "",
   vaccination_status: "",
-  address: "", current_address: "", contact: "", email: "", facebook_link: "",
+  address: "", current_address: "", same_as_permanent_address: false, contact: "", email: "", facebook_link: "",
   father_first_name: "", father_middle_name: "", father_last_name: "",
   father_name: "", father_occupation: "", father_contact: "",
   mother_first_name: "", mother_middle_name: "", mother_last_name: "",
@@ -104,6 +104,7 @@ const restoreForm = (): RegistrationForm => {
     return {
       ...initialForm,
       ...parsed,
+      current_address: parsed.same_as_permanent_address ? parsed.address ?? "" : parsed.current_address ?? "",
       date_of_birth: parsed.date_of_birth ? new Date(parsed.date_of_birth) : undefined,
     };
   } catch {
@@ -189,6 +190,7 @@ const buildSubmissionPayloads = ({
     course: _course,
     level: _level,
     year_level: _yearLevel,
+    same_as_permanent_address: _sameAsPermanentAddress,
     ...rest
   } = form;
 
@@ -334,6 +336,18 @@ const Register = () => {
       setForm((prev) => ({ ...prev, [name]: val }));
     }
   };
+  const setPermanentAddress = (value: string) =>
+    setForm((prev) => ({
+      ...prev,
+      address: value,
+      current_address: prev.same_as_permanent_address ? value : prev.current_address,
+    }));
+  const setSameAsPermanentAddress = (checked: boolean) =>
+    setForm((prev) => ({
+      ...prev,
+      same_as_permanent_address: checked,
+      current_address: checked ? prev.address : prev.current_address,
+    }));
 
   const showSpouse = ["Married", "Widowed", "Separated", "Divorced"].includes(form.civil_status);
   const selectedEducationLevel = normalizeEducationLevel(form.education_level || form.department);
@@ -641,8 +655,31 @@ const Register = () => {
           {/* Address & Contact */}
           <FormSection title="Address & Contact" description="Where we can reach you" icon={<MapPin className="h-4 w-4" />}>
             <div className="form-grid-2">
-              <TextField label="Permanent Address" name="address" required value={form.address} onChange={set("address")} />
-              <TextField label="Current Address" name="current_address" required value={form.current_address} onChange={set("current_address")} />
+              <TextField label="Permanent Address" name="address" required value={form.address} onChange={setPermanentAddress} />
+              <div className="space-y-2">
+                <TextField
+                  label="Current Address"
+                  name="current_address"
+                  required
+                  value={form.current_address}
+                  onChange={set("current_address")}
+                  disabled={form.same_as_permanent_address}
+                  placeholder={form.same_as_permanent_address ? "Copied from permanent address" : "Current address"}
+                />
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="same_as_permanent_address"
+                    checked={form.same_as_permanent_address}
+                    onCheckedChange={(checked) => setSameAsPermanentAddress(checked === true)}
+                  />
+                  <Label
+                    htmlFor="same_as_permanent_address"
+                    className="cursor-pointer text-sm font-medium text-muted-foreground"
+                  >
+                    Same as permanent address
+                  </Label>
+                </div>
+              </div>
               <TextField label="Contact Number" name="contact" type="tel" required value={form.contact} onChange={set("contact")} />
               <TextField label="Email Address" name="email" type="email" required value={form.email} onChange={set("email")} />
               <TextField label="Facebook Link" name="facebook_link" required value={form.facebook_link} onChange={set("facebook_link")} />

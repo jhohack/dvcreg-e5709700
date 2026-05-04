@@ -26,6 +26,7 @@ interface TextFieldProps extends BaseProps {
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 interface SelectFieldProps extends BaseProps {
@@ -41,7 +42,7 @@ interface DateFieldProps extends BaseProps {
 }
 
 export const TextField = ({
-  label, name, required, type = "text", value, onChange, placeholder, className,
+  label, name, required, type = "text", value, onChange, placeholder, disabled, className,
 }: TextFieldProps) => (
   <div className={cn("space-y-1.5", className)}>
     <Label htmlFor={name} className="text-sm font-medium text-foreground">
@@ -55,6 +56,7 @@ export const TextField = ({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder || label}
       required={required}
+      disabled={disabled}
       className="h-10 bg-background"
     />
   </div>
