@@ -4,6 +4,7 @@ import type { TablesInsert } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  BookOpen,
   CheckCircle2,
   DollarSign,
   GraduationCap,
@@ -779,8 +780,43 @@ const Register = () => {
             </div>
           </FormSection>
 
-          {/* Academic */}
-          <FormSection title="Academic Information" description="School and enrollment details" icon={<School className="h-4 w-4" />}>
+          <FormSection
+            title="Educational Background"
+            description="Previous schools attended by the student."
+            icon={<BookOpen className="h-4 w-4" />}
+          >
+            <div className="form-grid">
+              {isSHS && (
+                <>
+                  <TextField label="Elementary School" name="elem_school" required value={form.elem_school} onChange={set("elem_school")} />
+                  <TextField label="Elem. Address" name="elem_address" required value={form.elem_address} onChange={set("elem_address")} />
+                  <SchoolYearField label="School Year Attended" name="elem_year" required value={form.elem_year} onChange={set("elem_year")} />
+                  <TextField label="Junior High School" name="sec_school" required value={form.sec_school} onChange={set("sec_school")} />
+                  <TextField label="Jr. High Address" name="sec_address" required value={form.sec_address} onChange={set("sec_address")} />
+                  <SchoolYearField label="School Year Attended" name="sec_year" required value={form.sec_year} onChange={set("sec_year")} />
+                </>
+              )}
+              {isCollege && (
+                <>
+                  <TextField label="Junior High School" name="elem_school" required value={form.elem_school} onChange={set("elem_school")} />
+                  <TextField label="Jr. High Address" name="elem_address" required value={form.elem_address} onChange={set("elem_address")} />
+                  <SchoolYearField label="School Year Attended" name="elem_year" required value={form.elem_year} onChange={set("elem_year")} />
+                  <TextField label="Senior High School" name="sec_school" required value={form.sec_school} onChange={set("sec_school")} />
+                  <TextField label="Sr. High Address" name="sec_address" required value={form.sec_address} onChange={set("sec_address")} />
+                  <SchoolYearField label="School Year Attended" name="sec_year" required value={form.sec_year} onChange={set("sec_year")} />
+                </>
+              )}
+              <TextField label="Last School Attended" name="last_school" required value={form.last_school} onChange={set("last_school")} />
+              <TextField label="Last School Address" name="last_school_address" required value={form.last_school_address} onChange={set("last_school_address")} />
+              <TextField label="School Year Attended" name="last_school_year" required value={form.last_school_year} onChange={set("last_school_year")} placeholder="YYYY" />
+            </div>
+          </FormSection>
+
+          <FormSection
+            title="Current Education"
+            description="This section is for the student's current education level and LRN."
+            icon={<School className="h-4 w-4" />}
+          >
             <div className="form-grid">
               <SelectField
                 label="Education Level"
@@ -857,34 +893,6 @@ const Register = () => {
                   Academic options could not be loaded from Supabase.
                 </p>
               )}
-            </div>
-            <div className="mt-4 space-y-4">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Educational Background</p>
-              <div className="form-grid">
-                {isSHS && (
-                  <>
-                    <TextField label="Elementary School" name="elem_school" required value={form.elem_school} onChange={set("elem_school")} />
-                    <TextField label="Elem. Address" name="elem_address" required value={form.elem_address} onChange={set("elem_address")} />
-                    <SchoolYearField label="School Year Attended" name="elem_year" required value={form.elem_year} onChange={set("elem_year")} />
-                    <TextField label="Junior High School" name="sec_school" required value={form.sec_school} onChange={set("sec_school")} />
-                    <TextField label="Jr. High Address" name="sec_address" required value={form.sec_address} onChange={set("sec_address")} />
-                    <SchoolYearField label="School Year Attended" name="sec_year" required value={form.sec_year} onChange={set("sec_year")} />
-                  </>
-                )}
-                {isCollege && (
-                  <>
-                    <TextField label="Junior High School" name="elem_school" required value={form.elem_school} onChange={set("elem_school")} />
-                    <TextField label="Jr. High Address" name="elem_address" required value={form.elem_address} onChange={set("elem_address")} />
-                    <SchoolYearField label="School Year Attended" name="elem_year" required value={form.elem_year} onChange={set("elem_year")} />
-                    <TextField label="Senior High School" name="sec_school" required value={form.sec_school} onChange={set("sec_school")} />
-                    <TextField label="Sr. High Address" name="sec_address" required value={form.sec_address} onChange={set("sec_address")} />
-                    <SchoolYearField label="School Year Attended" name="sec_year" required value={form.sec_year} onChange={set("sec_year")} />
-                  </>
-                )}
-                <TextField label="Last School Attended" name="last_school" required value={form.last_school} onChange={set("last_school")} />
-                <TextField label="Last School Address" name="last_school_address" required value={form.last_school_address} onChange={set("last_school_address")} />
-                <TextField label="School Year Attended" name="last_school_year" required value={form.last_school_year} onChange={set("last_school_year")} placeholder="YYYY" />
-              </div>
             </div>
           </FormSection>
 
