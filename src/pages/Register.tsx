@@ -200,7 +200,7 @@ const buildSubmissionPayloads = ({
     date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString().split("T")[0] : null,
     age: form.age ? parseInt(form.age, 10) : null,
     monthly_income: form.monthly_income ? parseInt(form.monthly_income.replace(/,/g, ""), 10) : null,
-    facebook_link: normalizeFacebookLink(form.facebook_link) || null,
+    facebook_link: normalizeFacebookLink(form.facebook_link) || form.facebook_link.trim() || null,
     department: getLegacyDepartmentLabel(selectedEducationLevel) || null,
     course: isCollege ? form.program || null : null,
     shs_track: isSHS ? form.program || null : null,
@@ -376,6 +376,7 @@ const Register = () => {
       ? academicCatalogQuery.data?.levelsByProgramId[selectedProgram.id] ?? []
       : [];
   const facebookProfileLink = normalizeFacebookLink(form.facebook_link);
+  const facebookInput = form.facebook_link.trim();
 
   const setEducationLevel = (value: string) =>
     setForm((prev) => ({
@@ -417,6 +418,11 @@ const Register = () => {
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       toast.error("Please enter a valid email address.");
+      return false;
+    }
+
+    if (!form.facebook_link.trim()) {
+      toast.error("Please enter your Facebook username, profile URL, or exact Facebook name.");
       return false;
     }
 
@@ -687,25 +693,31 @@ const Register = () => {
               <TextField label="Email Address" name="email" type="email" required value={form.email} onChange={set("email")} />
               <div className="space-y-1.5">
                 <TextField
-                  label="Facebook Profile Link"
+                  label="Facebook Username or Profile URL"
                   name="facebook_link"
                   required
                   value={form.facebook_link}
                   onChange={set("facebook_link")}
-                  placeholder="facebook.com/yourname or @yourname"
+                  placeholder="jhoroseland.firmeza or https://web.facebook.com/jhoroseland.firmeza"
                 />
-                {facebookProfileLink ? (
-                  <a
-                    href={facebookProfileLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block text-xs break-all text-primary underline underline-offset-4 hover:text-primary/80"
-                  >
-                    Preview: {facebookProfileLink}
-                  </a>
+                {facebookInput ? (
+                  facebookProfileLink ? (
+                    <a
+                      href={facebookProfileLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block text-xs break-all text-primary underline underline-offset-4 hover:text-primary/80"
+                    >
+                      Preview link: {facebookProfileLink}
+                    </a>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      If you only remember the Facebook name, you can keep it here and the registrar will verify it manually.
+                    </p>
+                  )
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Paste a Facebook profile link or username. We&apos;ll turn it into a clickable link.
+                    Paste your Facebook username or the exact profile URL from the address bar. If you forgot the link, enter the exact Facebook name and we will verify it manually.
                   </p>
                 )}
               </div>

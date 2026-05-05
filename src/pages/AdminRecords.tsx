@@ -298,20 +298,21 @@ const AdminRecords = () => {
                 const stringValue = typeof val === "string" ? val.trim() : String(val);
                 if (!stringValue && val !== 0) return null;
 
+                const facebookUrl = key === "facebook_link"
+                  ? normalizeFacebookLink(stringValue)
+                  : "";
                 const displayValue = key === "education_level"
                   ? getEducationLevelLabel(stringValue)
                   : key === "facebook_link"
-                    ? normalizeFacebookLink(stringValue)
+                    ? facebookUrl || stringValue
                     : stringValue;
-
-                if (key === "facebook_link" && !displayValue) return null;
 
                 return (
                   <div key={key}>
                     <p className="text-xs text-muted-foreground">{label}</p>
-                    {key === "facebook_link" ? (
+                    {key === "facebook_link" && facebookUrl ? (
                       <a
-                        href={displayValue}
+                        href={facebookUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="text-sm font-medium text-primary underline underline-offset-4 break-all hover:text-primary/80"
