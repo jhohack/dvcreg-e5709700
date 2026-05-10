@@ -133,15 +133,26 @@ export const SchoolYearField = ({
   label, name, required, value, className,
   onChange,
 }: SchoolYearFieldProps) => {
-  // value stored as "YYYY-YYYY"
-  const parts = value ? value.split("-") : ["", ""];
-  const startYear = parts[0] || "";
-  const endYear = parts[1] || "";
+  const normalizeStartYear = (input: string) => input.replace(/\D/g, "").slice(0, 4);
 
-  const handleChange = (start: string, end: string) => {
-    const s = start.replace(/\D/g, "").slice(0, 4);
-    const e = end.replace(/\D/g, "").slice(0, 4);
-    onChange(s || e ? `${s}-${e}` : "");
+  const getAutoEndYear = (startYear: string) => {
+    if (startYear.length !== 4) {
+      return "";
+    }
+
+    return String(Number(startYear) + 1).padStart(4, "0");
+  };
+
+  const parts = value ? value.split("-") : ["", ""];
+  const startYear = normalizeStartYear(parts[0] || "");
+  const autoEndYear = getAutoEndYear(startYear);
+  const endYear = startYear.length === 4 ? autoEndYear : "";
+
+  const handleStartChange = (start: string) => {
+    const normalizedStart = normalizeStartYear(start);
+    const normalizedEnd = getAutoEndYear(normalizedStart);
+
+    onChange(normalizedStart ? `${normalizedStart}-${normalizedEnd}` : "");
   };
 
   return (
@@ -157,7 +168,7 @@ export const SchoolYearField = ({
           inputMode="numeric"
           maxLength={4}
           value={startYear}
-          onChange={(e) => handleChange(e.target.value, endYear)}
+          onChange={(e) => handleStartChange(e.target.value)}
           placeholder="YYYY"
           className="h-10 bg-background text-center"
         />
@@ -166,11 +177,11 @@ export const SchoolYearField = ({
           id={`${name}_end`}
           name={`${name}_end`}
           type="text"
-          inputMode="numeric"
-          maxLength={4}
           value={endYear}
-          onChange={(e) => handleChange(startYear, e.target.value)}
-          placeholder="YYYY"
+          readOnly
+          tabIndex={-1}
+          aria-readonly="true"
+          placeholder="auto"
           className="h-10 bg-background text-center"
         />
       </div>

@@ -21,6 +21,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import FormSection from "@/components/registration/FormSection";
 import PhotoUploadDialog from "@/components/registration/PhotoUploadDialog";
 import SignaturePadDialog from "@/components/registration/SignaturePadDialog";
@@ -47,6 +55,10 @@ const VERIFICATION_STORAGE_KEY = "dvcreg-registration-verification";
 const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
 const verificationServiceUnavailableMessage = "Verification service is unavailable right now. Please try again in a moment.";
 const photoCleanupServiceUnavailableMessage = "Photo cleanup service is unavailable right now. Please try again in a moment.";
+const privacyNoticeText = [
+  "By submitting this form, you consent to the collection, storage, and processing of your personal information, student photo, and signature for enrollment, verification, academic recordkeeping, and registrar processing.",
+  "Your information is handled securely and is accessible only to authorized school personnel. It will not be sold or shared with unauthorized parties. By continuing, you acknowledge that you have read and understood this notice and agree to the use of your data for these official school purposes.",
+];
 
 const verificationFunctionByPath: Record<string, string> = {
   "send-verification-code.php": "send-verification-code",
@@ -479,6 +491,8 @@ const Register = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [registrationDraftId, setRegistrationDraftId] = useState(() => restoreRegistrationDraftId());
+  const [privacyNoticeOpen, setPrivacyNoticeOpen] = useState(false);
+  const [privacyNoticeAgreed, setPrivacyNoticeAgreed] = useState(false);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [signaturePreviewUrl, setSignaturePreviewUrl] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -827,6 +841,10 @@ const Register = () => {
         expiresAt: response.expiresAt,
       });
       setVerificationCode("");
+      if (mode === "initial") {
+        setPrivacyNoticeOpen(false);
+        setPrivacyNoticeAgreed(false);
+      }
       toast.success(mode === "resend" ? "A new verification code was sent to your email." : "Verification code sent. Check your email.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to send the verification code.");
@@ -841,6 +859,31 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateBeforeSendingCode()) {
+      return;
+    }
+
+    setPrivacyNoticeAgreed(false);
+    setPrivacyNoticeOpen(true);
+  };
+
+  const handlePrivacyNoticeOpenChange = (open: boolean) => {
+    if (!open && sendingCode) {
+      return;
+    }
+
+    setPrivacyNoticeOpen(open);
+
+    if (!open) {
+      setPrivacyNoticeAgreed(false);
+    }
+  };
+
+  const handlePrivacyNoticeConfirm = async () => {
+    if (!privacyNoticeAgreed || sendingCode) {
+      return;
+    }
+
     await startEmailVerification("initial");
   };
 
@@ -930,6 +973,70 @@ const Register = () => {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-6 md:py-10">
+        <Dialog open={privacyNoticeOpen} onOpenChange={handlePrivacyNoticeOpenChange}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary sm:mx-0">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <DialogTitle className="text-2xl font-bold">Privacy Notice</DialogTitle>
+              <DialogDescription className="text-sm leading-6">
+                Please review this notice before we send your verification code.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 rounded-2xl border border-border bg-muted/30 p-4 text-sm leading-7 text-muted-foreground">
+              {privacyNoticeText.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+
+            <div className="flex items-start gap-3 rounded-2xl border border-border bg-background p-4">
+              <Checkbox
+                id="privacy-notice-agreement"
+                checked={privacyNoticeAgreed}
+                onCheckedChange={(checked) => setPrivacyNoticeAgreed(checked === true)}
+                disabled={sendingCode}
+                className="mt-1"
+              />
+              <div className="space-y-1">
+                <Label
+                  htmlFor="privacy-notice-agreement"
+                  className="cursor-pointer text-sm font-medium text-foreground"
+                >
+                  I have read and agree to the Privacy Notice.
+                </Label>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  The Confirm button will become available once you check this box.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter className="sm:justify-between">
+              <p className="text-xs leading-5 text-muted-foreground sm:max-w-[60%]">
+                By confirming, you authorize the school to use your submitted information for enrollment and registrar processing.
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handlePrivacyNoticeOpenChange(false)}
+                  disabled={sendingCode}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handlePrivacyNoticeConfirm}
+                  disabled={!privacyNoticeAgreed || sendingCode}
+                >
+                  {sendingCode ? "Sending Code..." : "Confirm"}
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {verificationInfo ? (
           <div className="section-card mx-auto max-w-xl space-y-6">
             <div className="flex flex-col items-center gap-3 text-center">
@@ -1177,7 +1284,7 @@ const Register = () => {
               )}
               <TextField label="Last School Attended" name="last_school" required value={form.last_school} onChange={set("last_school")} />
               <TextField label="Last School Address" name="last_school_address" required value={form.last_school_address} onChange={set("last_school_address")} />
-              <TextField label="School Year Attended" name="last_school_year" required value={form.last_school_year} onChange={set("last_school_year")} placeholder="YYYY" />
+              <SchoolYearField label="School Year Attended" name="last_school_year" required value={form.last_school_year} onChange={set("last_school_year")} />
             </div>
           </FormSection>
 
