@@ -32,6 +32,8 @@ export type Database = {
           elem_year: string | null
           email: string | null
           facebook_link: string | null
+          profile_photo_file_name: string | null
+          profile_photo_path: string | null
           father_contact: string | null
           father_first_name: string | null
           father_last_name: string | null
@@ -78,6 +80,8 @@ export type Database = {
           spouse_name: string | null
           student_information_id: string | null
           student_lrn: string | null
+          signature_file_name: string | null
+          signature_path: string | null
           tribe: string | null
           updated_at: string
           vaccination_status: string | null
@@ -100,6 +104,8 @@ export type Database = {
           elem_year?: string | null
           email?: string | null
           facebook_link?: string | null
+          profile_photo_file_name?: string | null
+          profile_photo_path?: string | null
           father_contact?: string | null
           father_first_name?: string | null
           father_last_name?: string | null
@@ -146,6 +152,8 @@ export type Database = {
           spouse_name?: string | null
           student_information_id?: string | null
           student_lrn?: string | null
+          signature_file_name?: string | null
+          signature_path?: string | null
           tribe?: string | null
           updated_at?: string
           vaccination_status?: string | null
@@ -168,6 +176,8 @@ export type Database = {
           elem_year?: string | null
           email?: string | null
           facebook_link?: string | null
+          profile_photo_file_name?: string | null
+          profile_photo_path?: string | null
           father_contact?: string | null
           father_first_name?: string | null
           father_last_name?: string | null
@@ -214,6 +224,8 @@ export type Database = {
           spouse_name?: string | null
           student_information_id?: string | null
           student_lrn?: string | null
+          signature_file_name?: string | null
+          signature_path?: string | null
           tribe?: string | null
           updated_at?: string
           vaccination_status?: string | null
@@ -1081,6 +1093,8 @@ export type Database = {
           elem_year: string | null
           email: string | null
           facebook_link: string | null
+          profile_photo_file_name: string | null
+          profile_photo_path: string | null
           father_contact: string | null
           father_first_name: string | null
           father_last_name: string | null
@@ -1123,6 +1137,8 @@ export type Database = {
           shs_track: string | null
           spouse_name: string | null
           student_lrn: string | null
+          signature_file_name: string | null
+          signature_path: string | null
           student_school_id: string
           tribe: string | null
           vaccination_status: string | null
@@ -1144,6 +1160,8 @@ export type Database = {
           elem_year?: string | null
           email?: string | null
           facebook_link?: string | null
+          profile_photo_file_name?: string | null
+          profile_photo_path?: string | null
           father_contact?: string | null
           father_first_name?: string | null
           father_last_name?: string | null
@@ -1186,6 +1204,8 @@ export type Database = {
           shs_track?: string | null
           spouse_name?: string | null
           student_lrn?: string | null
+          signature_file_name?: string | null
+          signature_path?: string | null
           student_school_id: string
           tribe?: string | null
           vaccination_status?: string | null
@@ -1207,6 +1227,8 @@ export type Database = {
           elem_year?: string | null
           email?: string | null
           facebook_link?: string | null
+          profile_photo_file_name?: string | null
+          profile_photo_path?: string | null
           father_contact?: string | null
           father_first_name?: string | null
           father_last_name?: string | null
@@ -1249,6 +1271,8 @@ export type Database = {
           shs_track?: string | null
           spouse_name?: string | null
           student_lrn?: string | null
+          signature_file_name?: string | null
+          signature_path?: string | null
           student_school_id?: string
           tribe?: string | null
           vaccination_status?: string | null

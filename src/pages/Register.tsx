@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -20,7 +20,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import FormSection from "@/components/registration/FormSection";
+import PhotoUploadDialog from "@/components/registration/PhotoUploadDialog";
+import SignaturePadDialog from "@/components/registration/SignaturePadDialog";
 import { TextField, SelectField, DateField, SchoolYearField } from "@/components/registration/FormField";
 import {
   genderOptions, civilStatusOptions, vaccinationStatusOptions,
@@ -35,6 +38,7 @@ import {
   normalizeEducationLevel,
 } from "@/lib/academicCatalog";
 import { normalizeFacebookLink } from "@/lib/facebook";
+import { validateStudentPhoto } from "@/lib/photoValidation";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -42,7 +46,7 @@ const FORM_STORAGE_KEY = "dvcreg-registration-form";
 const VERIFICATION_STORAGE_KEY = "dvcreg-registration-verification";
 const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
 const verificationServiceUnavailableMessage = "Verification service is unavailable right now. Please try again in a moment.";
-const phpApiUnavailableMessage = "Verification service is unavailable right now. Make sure the PHP API is running.";
+const photoCleanupServiceUnavailableMessage = "Photo cleanup service is unavailable right now. Please try again in a moment.";
 
 const verificationFunctionByPath: Record<string, string> = {
   "send-verification-code.php": "send-verification-code",
@@ -56,6 +60,10 @@ const initialForm = {
   spouse_name: "", nationality: "Filipino", religion: "", religion_other: "", tribe: "", tribe_other: "",
   vaccination_status: "",
   address: "", current_address: "", same_as_permanent_address: false, contact: "", email: "", facebook_link: "",
+  profile_photo_path: "", profile_photo_file_name: "",
+  profile_photo_revision: "",
+  signature_path: "", signature_file_name: "",
+  signature_revision: "",
   father_first_name: "", father_middle_name: "", father_last_name: "",
   father_name: "", father_occupation: "", father_contact: "",
   mother_first_name: "", mother_middle_name: "", mother_last_name: "",
@@ -89,6 +97,71 @@ type VerifyCodeResponse = {
   ok: boolean;
   alreadyVerified?: boolean;
   message?: string;
+};
+
+const MEDIA_BUCKET = "registration-media";
+const DRAFT_STORAGE_KEY = "dvcreg-registration-draft-id";
+const ACCEPTED_MEDIA_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_MEDIA_SIZE_BYTES = 5 * 1024 * 1024;
+
+const createRegistrationDraftId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  const hex = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+};
+
+const restoreRegistrationDraftId = () => {
+  if (typeof window === "undefined") {
+    return createRegistrationDraftId();
+  }
+
+  try {
+    const existing = window.sessionStorage.getItem(DRAFT_STORAGE_KEY);
+    if (existing) {
+      return existing;
+    }
+
+    const next = createRegistrationDraftId();
+    window.sessionStorage.setItem(DRAFT_STORAGE_KEY, next);
+    return next;
+  } catch {
+    return createRegistrationDraftId();
+  }
+};
+
+const persistRegistrationDraftId = (draftId: string) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.setItem(DRAFT_STORAGE_KEY, draftId);
+};
+
+const getMediaPath = (draftId: string, kind: "student-photo" | "student-signature") =>
+  `registration-drafts/${draftId}/${kind}`;
+
+const getMediaPublicUrl = (path: string) =>
+  supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
+
+const getMediaPreviewUrl = (path: string, revision?: string | null) => {
+  const publicUrl = getMediaPublicUrl(path);
+  if (!revision) {
+    return publicUrl;
+  }
+
+  const separator = publicUrl.includes("?") ? "&" : "?";
+  return `${publicUrl}${separator}v=${encodeURIComponent(revision)}`;
+};
+
+const buildProcessedPhotoFileName = (originalFileName: string) => {
+  const trimmedName = originalFileName.trim();
+  const lastDotIndex = trimmedName.lastIndexOf(".");
+  const baseName = lastDotIndex > 0 ? trimmedName.slice(0, lastDotIndex) : trimmedName;
+
+  return `${baseName || "student-photo"}-white.jpg`;
 };
 
 const restoreForm = (): RegistrationForm => {
@@ -167,6 +240,7 @@ const clearStoredRegistrationState = () => {
 
   window.sessionStorage.removeItem(FORM_STORAGE_KEY);
   window.sessionStorage.removeItem(VERIFICATION_STORAGE_KEY);
+  window.sessionStorage.removeItem(DRAFT_STORAGE_KEY);
 };
 
 const buildSubmissionPayloads = ({
@@ -193,11 +267,17 @@ const buildSubmissionPayloads = ({
     level: _level,
     year_level: _yearLevel,
     same_as_permanent_address: _sameAsPermanentAddress,
-    ...rest
+    profile_photo_path,
+    profile_photo_file_name,
+    profile_photo_revision,
+    signature_path,
+    signature_file_name,
+    signature_revision,
+    ...legacyRest
   } = form;
 
   const legacyPayload: TablesInsert<"admission"> = {
-    ...rest,
+    ...legacyRest,
     date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString().split("T")[0] : null,
     age: form.age ? parseInt(form.age, 10) : null,
     monthly_income: form.monthly_income ? parseInt(form.monthly_income.replace(/,/g, ""), 10) : null,
@@ -213,6 +293,10 @@ const buildSubmissionPayloads = ({
 
   const payload: TablesInsert<"admission"> = {
     ...legacyPayload,
+    profile_photo_path: profile_photo_path || null,
+    profile_photo_file_name: profile_photo_file_name || null,
+    signature_path: signature_path || null,
+    signature_file_name: signature_file_name || null,
   };
 
   return { payload, legacyPayload };
@@ -230,36 +314,99 @@ const maskEmail = (email: string) => {
   return `${visibleStart}${maskedMiddle}${visibleEnd}@${domain}`;
 };
 
-const postJsonToPhpApi = async <T,>(path: string, body: unknown): Promise<T> => {
+const postBinaryToPhpApi = async (path: string, body: Blob): Promise<Blob> => {
   let response: Response;
 
   try {
     response = await fetch(`${configuredApiBase}/${path}`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": body.type || "application/octet-stream",
       },
-      body: JSON.stringify(body),
+      body,
     });
   } catch {
-    throw new Error(phpApiUnavailableMessage);
+    throw new Error(photoCleanupServiceUnavailableMessage);
   }
 
-  const contentType = response.headers.get("content-type") ?? "";
-  const data = contentType.includes("application/json")
-    ? await response.json().catch(() => null)
-    : null;
+  if (!response.ok) {
+    const contentType = response.headers.get("content-type") ?? "";
+    const text = await response.text().catch(() => "");
+    const data = contentType.includes("application/json") && text
+      ? (() => {
+          try {
+            return JSON.parse(text) as { message?: unknown };
+          } catch {
+            return null;
+          }
+        })()
+      : null;
 
-  if (!response.ok || !data?.ok) {
-    const message = data?.message
-      || (response.status === 404 ? phpApiUnavailableMessage : null)
-      || (response.status >= 500 ? "Verification service error. Please try again in a moment." : null)
-      || "Request failed.";
+    const message = typeof data?.message === "string" && data.message.trim()
+      ? data.message.trim()
+      : text.trim() || "Could not clean the photo background.";
 
     throw new Error(message);
   }
 
-  return data as T;
+  return await response.blob();
+};
+
+const renderBlobOnWhiteCanvas = async (blob: Blob): Promise<Blob> => {
+  const objectUrl = URL.createObjectURL(blob);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("Could not process the cleaned photo."));
+      element.src = objectUrl;
+    });
+
+    const canvas = document.createElement("canvas");
+    const width = image.naturalWidth || image.width;
+    const height = image.naturalHeight || image.height;
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Could not prepare the cleaned photo.");
+    }
+
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((result) => {
+        if (result) {
+          resolve(result);
+          return;
+        }
+
+        reject(new Error("Could not render the cleaned photo."));
+      }, "image/jpeg", 0.97);
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+};
+
+const removePhotoBackgroundInBrowser = async (file: File): Promise<File> => {
+  const { removeBackground } = await import("@imgly/background-removal");
+  const cleanedBlob = await removeBackground(file, {
+    model: "isnet_fp16",
+    output: {
+      format: "image/png",
+      type: "foreground",
+    },
+  });
+
+  const flattenedBlob = await renderBlobOnWhiteCanvas(cleanedBlob);
+  return new File([flattenedBlob], buildProcessedPhotoFileName(file.name), {
+    type: "image/jpeg",
+  });
 };
 
 const postJsonToEdgeFunction = async <T,>(path: string, body: unknown): Promise<T> => {
@@ -293,11 +440,34 @@ const postJsonToEdgeFunction = async <T,>(path: string, body: unknown): Promise<
 };
 
 const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
-  if (configuredApiBase) {
-    return await postJsonToPhpApi<T>(path, body);
+  if (verificationFunctionByPath[path]) {
+    return await postJsonToEdgeFunction<T>(path, body);
   }
 
-  return await postJsonToEdgeFunction<T>(path, body);
+  throw new Error("Unsupported verification request.");
+};
+
+const processPhotoBackground = async (file: File): Promise<File> => {
+  if (configuredApiBase) {
+    try {
+      const cleanedBlob = await postBinaryToPhpApi("remove-photo-background.php", file);
+      return new File([cleanedBlob], buildProcessedPhotoFileName(file.name), {
+        type: "image/jpeg",
+      });
+    } catch (error) {
+      console.warn("Server photo cleanup failed. Falling back to browser cleanup.", error);
+    }
+  }
+
+  try {
+    return await removePhotoBackgroundInBrowser(file);
+  } catch (error) {
+    throw new Error(
+      error instanceof Error && error.message.trim() !== ""
+        ? error.message
+        : photoCleanupServiceUnavailableMessage,
+    );
+  }
 };
 
 const Register = () => {
@@ -308,6 +478,13 @@ const Register = () => {
   const [resendingCode, setResendingCode] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [registrationDraftId, setRegistrationDraftId] = useState(() => restoreRegistrationDraftId());
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [signaturePreviewUrl, setSignaturePreviewUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [signatureUploading, setSignatureUploading] = useState(false);
+  const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
+  const [signatureUploadError, setSignatureUploadError] = useState<string | null>(null);
   const academicCatalogQuery = useQuery({
     queryKey: ["academic-catalog"],
     queryFn: fetchAcademicCatalog,
@@ -325,6 +502,26 @@ const Register = () => {
       persistVerificationInfo(verificationInfo);
     }
   }, [verificationInfo, submitted]);
+
+  useEffect(() => {
+    persistRegistrationDraftId(registrationDraftId);
+  }, [registrationDraftId]);
+
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(photoPreviewUrl);
+      }
+    };
+  }, [photoPreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (signaturePreviewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(signaturePreviewUrl);
+      }
+    };
+  }, [signaturePreviewUrl]);
 
   const set = (name: keyof RegistrationForm) => (val: string) =>
     setForm((prev) => ({ ...prev, [name]: val }));
@@ -379,6 +576,154 @@ const Register = () => {
   const facebookProfileLink = normalizeFacebookLink(form.facebook_link);
   const facebookInput = form.facebook_link.trim();
 
+  const replacePreviewUrl = (
+    setter: Dispatch<SetStateAction<string | null>>,
+    nextUrl: string | null,
+  ) => {
+    setter((current) => {
+      if (current?.startsWith("blob:")) {
+        URL.revokeObjectURL(current);
+      }
+
+      return nextUrl;
+    });
+  };
+
+  const validateMediaFile = (file: File, fieldLabel: string) => {
+    if (!ACCEPTED_MEDIA_TYPES.has(file.type)) {
+      return `${fieldLabel} must be a JPG, PNG, or WEBP image.`;
+    }
+
+    if (file.size > MAX_MEDIA_SIZE_BYTES) {
+      return `${fieldLabel} must be 5 MB or smaller.`;
+    }
+
+    return null;
+  };
+
+  const uploadMediaFile = async ({
+    file,
+    kind,
+  }: {
+    file: File;
+    kind: "photo" | "signature";
+  }): Promise<boolean> => {
+    const label = kind === "photo" ? "The photo" : "The signature";
+    const previewSetter = kind === "photo" ? setPhotoPreviewUrl : setSignaturePreviewUrl;
+    const errorSetter = kind === "photo" ? setPhotoUploadError : setSignatureUploadError;
+    const uploadingSetter = kind === "photo" ? setPhotoUploading : setSignatureUploading;
+    const storagePath = getMediaPath(registrationDraftId, kind === "photo" ? "student-photo" : "student-signature");
+
+    const validationError = validateMediaFile(file, label);
+    if (validationError) {
+      errorSetter(validationError);
+      toast.error(validationError);
+      return false;
+    }
+
+    errorSetter(null);
+
+    try {
+      if (kind === "photo") {
+        const validation = await validateStudentPhoto(file);
+        if (!validation.ok) {
+          throw new Error(validation.reason);
+        }
+      }
+
+      uploadingSetter(true);
+      const fileToUpload = kind === "photo"
+        ? await processPhotoBackground(file)
+        : file;
+      const localPreviewUrl = URL.createObjectURL(fileToUpload);
+      replacePreviewUrl(previewSetter, localPreviewUrl);
+
+      const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(storagePath, fileToUpload, {
+        upsert: true,
+        contentType: fileToUpload.type || file.type,
+        cacheControl: "3600",
+      });
+
+      if (error) {
+        throw new Error(error.message || `Could not upload ${kind === "photo" ? "the photo" : "the signature"}.`);
+      }
+
+      const revision = String(Date.now());
+      const publicUrl = getMediaPreviewUrl(storagePath, revision);
+      replacePreviewUrl(previewSetter, publicUrl);
+      setForm((prev) =>
+        kind === "photo"
+          ? {
+              ...prev,
+              profile_photo_path: storagePath,
+              profile_photo_file_name: fileToUpload.name,
+              profile_photo_revision: revision,
+            }
+          : {
+              ...prev,
+              signature_path: storagePath,
+              signature_file_name: file.name,
+              signature_revision: revision,
+            }
+      );
+    } catch (error) {
+      errorSetter(error instanceof Error ? error.message : `Could not upload ${kind === "photo" ? "the photo" : "the signature"}.`);
+      toast.error(error instanceof Error ? error.message : `Could not upload ${kind === "photo" ? "the photo" : "the signature"}.`);
+      return false;
+    } finally {
+      uploadingSetter(false);
+    }
+
+    return true;
+  };
+
+  const handlePhotoUpload = async (file: File | null) => {
+    if (!file) {
+      return false;
+    }
+
+    return await uploadMediaFile({ file, kind: "photo" });
+  };
+
+  const handleSignatureUpload = async (file: File | null) => {
+    if (!file) {
+      return false;
+    }
+
+    return await uploadMediaFile({ file, kind: "signature" });
+  };
+
+  const clearMediaField = (kind: "photo" | "signature") => {
+    const previewSetter = kind === "photo" ? setPhotoPreviewUrl : setSignaturePreviewUrl;
+    const errorSetter = kind === "photo" ? setPhotoUploadError : setSignatureUploadError;
+
+    replacePreviewUrl(previewSetter, null);
+    errorSetter(null);
+
+    setForm((prev) =>
+        kind === "photo"
+          ? {
+              ...prev,
+              profile_photo_path: "",
+              profile_photo_file_name: "",
+              profile_photo_revision: "",
+            }
+          : {
+              ...prev,
+              signature_path: "",
+              signature_file_name: "",
+              signature_revision: "",
+            }
+    );
+  };
+
+  const mediaIsUploading = photoUploading || signatureUploading;
+  const profilePhotoPreviewSrc = photoPreviewUrl ?? (
+    form.profile_photo_path ? getMediaPreviewUrl(form.profile_photo_path, form.profile_photo_revision) : null
+  );
+  const signaturePreviewSrc = signaturePreviewUrl ?? (
+    form.signature_path ? getMediaPreviewUrl(form.signature_path, form.signature_revision) : null
+  );
   const setEducationLevel = (value: string) =>
     setForm((prev) => ({
       ...prev,
@@ -412,6 +757,21 @@ const Register = () => {
     }));
 
   const validateBeforeSendingCode = () => {
+    if (photoUploading || signatureUploading) {
+      toast.error("Please wait for the photo and signature uploads to finish.");
+      return false;
+    }
+
+    if (!form.profile_photo_path) {
+      toast.error("Please upload the student's formal photo.");
+      return false;
+    }
+
+    if (!form.signature_path) {
+      toast.error("Please upload the student's signature.");
+      return false;
+    }
+
     if (!form.first_name || !form.last_name || !form.gender || !selectedEducationLevel || !form.program || !form.level || !form.email) {
       toast.error("Please fill in all required fields.");
       return false;
@@ -520,6 +880,15 @@ const Register = () => {
 
   const resetRegistration = () => {
     clearStoredRegistrationState();
+    const nextDraftId = createRegistrationDraftId();
+    persistRegistrationDraftId(nextDraftId);
+    setRegistrationDraftId(nextDraftId);
+    replacePreviewUrl(setPhotoPreviewUrl, null);
+    replacePreviewUrl(setSignaturePreviewUrl, null);
+    setPhotoUploading(false);
+    setSignatureUploading(false);
+    setPhotoUploadError(null);
+    setSignatureUploadError(null);
     setForm(initialForm);
     setVerificationInfo(null);
     setVerificationCode("");
@@ -896,8 +1265,54 @@ const Register = () => {
             </div>
           </FormSection>
 
-          <div className="flex justify-end pt-2 pb-8">
-            <Button type="submit" size="lg" disabled={sendingCode} className="min-w-[240px] h-12 text-base font-semibold">
+          <FormSection
+            title="Student Photo & Signature"
+            description="Upload the required formal photo. The server will automatically clean the background to white before submitting, then draw the handwritten signature."
+            icon={<ShieldCheck className="h-4 w-4" />}
+          >
+            <div className="rounded-2xl border border-border bg-muted/30 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                  <p className="font-semibold text-foreground">Both items are required for application review.</p>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Use the buttons below to open the guided photo and signature modals. Each modal shows the rules and
+                    will reject invalid uploads.
+                  </p>
+                </div>
+                <Badge variant="outline" className="w-fit border-destructive/30 bg-destructive/5 text-destructive">
+                  Rejected if incorrect
+                </Badge>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <PhotoUploadDialog
+              previewUrl={profilePhotoPreviewSrc}
+              fileName={form.profile_photo_file_name || null}
+              uploading={photoUploading}
+              error={photoUploadError}
+              onUploadFile={handlePhotoUpload}
+              onClear={() => clearMediaField("photo")}
+            />
+
+              <SignaturePadDialog
+                previewUrl={signaturePreviewSrc}
+                fileName={form.signature_file_name || null}
+                uploading={signatureUploading}
+                error={signatureUploadError}
+                onUploadFile={handleSignatureUpload}
+                onClear={() => clearMediaField("signature")}
+              />
+            </div>
+          </FormSection>
+
+          <div className="flex flex-col gap-3 pt-2 pb-8 sm:flex-row sm:items-center sm:justify-end">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={sendingCode || mediaIsUploading}
+              className="h-12 min-w-[240px] text-base font-semibold"
+            >
               {sendingCode ? "Sending Code..." : "Send Verification Code"}
             </Button>
           </div>

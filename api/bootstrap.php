@@ -368,9 +368,17 @@ function is_missing_academic_columns_error(array|string|null $body): bool
     return str_contains($message, "column admission.education_level does not exist")
         || str_contains($message, "column admission.program does not exist")
         || str_contains($message, "column admission.level does not exist")
+        || str_contains($message, "column admission.profile_photo_path does not exist")
+        || str_contains($message, "column admission.profile_photo_file_name does not exist")
+        || str_contains($message, "column admission.signature_path does not exist")
+        || str_contains($message, "column admission.signature_file_name does not exist")
         || str_contains($message, "could not find the 'education_level' column")
         || str_contains($message, "could not find the 'program' column")
-        || str_contains($message, "could not find the 'level' column");
+        || str_contains($message, "could not find the 'level' column")
+        || str_contains($message, "could not find the 'profile_photo_path' column")
+        || str_contains($message, "could not find the 'profile_photo_file_name' column")
+        || str_contains($message, "could not find the 'signature_path' column")
+        || str_contains($message, "could not find the 'signature_file_name' column");
 }
 
 function insert_admission_payloads(string $id, array $payload, array $legacyPayload): void

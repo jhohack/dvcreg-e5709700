@@ -48,6 +48,8 @@ SMTP_TIMEOUT_SECONDS=20
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ALLOWED_ORIGINS=https://your-lovable-site.lovable.app,https://your-custom-domain.com
+REMBG_COMMAND=rembg
+REMBG_MODEL=isnet-general-use
 ```
 
 ## Frontend Setup
@@ -72,6 +74,21 @@ Expected result:
 - message similar to `Method not allowed.`
 
 That confirms PHP is running the endpoint.
+
+## Photo Cleanup
+
+Add the photo cleanup endpoint to the same PHP host:
+
+`https://api.yourdomain.com/api/remove-photo-background.php`
+
+The endpoint expects raw image bytes, runs `rembg` locally on the server, and returns a white-background JPG.
+The app will fall back to browser cleanup if this endpoint is unavailable, but the local PHP route is still the faster path.
+
+Server requirements:
+- `rembg` installed on the PHP host, usually via Python and `pip install rembg`
+- PHP GD enabled so the server can flatten the transparent output onto white
+- PHP `exec()` enabled so it can launch `rembg`
+- the `REMBG_COMMAND` and `REMBG_MODEL` environment variables set if you need to override the defaults
 
 ## Notes
 

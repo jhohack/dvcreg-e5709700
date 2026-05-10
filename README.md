@@ -64,6 +64,16 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
+## Photo background cleanup
+
+The student photo upload automatically cleans the background to white through the PHP API before the file is saved.
+Verification emails still go through Supabase Edge Functions, so only the photo cleanup step needs this PHP API.
+Set `VITE_API_BASE_URL` to your local or hosted PHP API, install `rembg` on that server, and make sure the PHP API can run it.
+The cleanup endpoint is `api/remove-photo-background.php`, and it returns a white-background JPG without using a paid image API.
+Your PHP host also needs to allow `exec()` so it can launch `rembg`.
+If the PHP API is unavailable, the app falls back to browser-based cleanup so uploads still work, but that path can be slower on the first run.
+Before cleanup, the app also automatically checks the student photo for a clear face, good brightness, and sharp focus.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!
