@@ -18,6 +18,8 @@ import {
 } from "@/lib/academicCatalog";
 import { normalizeFacebookLink } from "@/lib/facebook";
 
+const MEDIA_BUCKET = "registration-media";
+
 interface Student {
   id: string;
   first_name: string;
@@ -32,6 +34,10 @@ interface Student {
   level: string | null;
   year_level: string | null;
   date_created: string;
+  profile_photo_path?: string | null;
+  profile_photo_file_name?: string | null;
+  signature_path?: string | null;
+  signature_file_name?: string | null;
   [key: string]: string | number | boolean | null | undefined;
 }
 
@@ -61,6 +67,49 @@ const fieldLabels: Record<string, string> = {
   last_school_year: "Last School Year", program: "Program", course: "Course", level: "Level", year_level: "Year Level",
   date_created: "Date Registered",
 };
+
+const getMediaPublicUrl = (path: string | null | undefined) => {
+  const trimmedPath = path?.trim();
+  if (!trimmedPath) {
+    return null;
+  }
+
+  return supabase.storage.from(MEDIA_BUCKET).getPublicUrl(trimmedPath).data.publicUrl;
+};
+
+const MediaPreview = ({
+  title,
+  fileName,
+  imageUrl,
+  alt,
+}: {
+  title: string;
+  fileName: string | null | undefined;
+  imageUrl: string | null;
+  alt: string;
+}) => (
+  <div className="overflow-hidden rounded-2xl border border-border bg-background">
+    <div className="border-b border-border px-4 py-3">
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      <p className="text-xs text-muted-foreground">
+        {fileName?.trim() || "No file name saved"}
+      </p>
+    </div>
+    <div className="flex items-center justify-center bg-muted/20 p-4">
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={alt}
+          className="max-h-64 w-full rounded-xl border border-border/60 bg-background object-contain"
+        />
+      ) : (
+        <div className="flex h-44 w-full items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+          No {title.toLowerCase()} available
+        </div>
+      )}
+    </div>
+  </div>
+);
 
 const AdminRecords = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -287,44 +336,61 @@ const AdminRecords = () => {
             </DialogTitle>
           </DialogHeader>
           {selected && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 mt-2">
-              {Object.entries(fieldLabels).map(([key, label]) => {
-                if (key === "department" && selected.education_level) return null;
-                if (key === "course" && selected.program) return null;
-                if (key === "shs_track" && selected.program) return null;
-                if (key === "year_level" && selected.level) return null;
+            <div className="mt-2 space-y-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <MediaPreview
+                  title="Profile Photo"
+                  fileName={selected.profile_photo_file_name}
+                  imageUrl={getMediaPublicUrl(selected.profile_photo_path)}
+                  alt={`${selected.first_name} ${selected.last_name} profile photo`}
+                />
+                <MediaPreview
+                  title="Signature"
+                  fileName={selected.signature_file_name}
+                  imageUrl={getMediaPublicUrl(selected.signature_path)}
+                  alt={`${selected.first_name} ${selected.last_name} signature`}
+                />
+              </div>
 
-                const val = selected[key];
-                const stringValue = typeof val === "string" ? val.trim() : String(val);
-                if (!stringValue && val !== 0) return null;
+              <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+                {Object.entries(fieldLabels).map(([key, label]) => {
+                  if (key === "department" && selected.education_level) return null;
+                  if (key === "course" && selected.program) return null;
+                  if (key === "shs_track" && selected.program) return null;
+                  if (key === "year_level" && selected.level) return null;
 
-                const facebookUrl = key === "facebook_link"
-                  ? normalizeFacebookLink(stringValue)
-                  : "";
-                const displayValue = key === "education_level"
-                  ? getEducationLevelLabel(stringValue)
-                  : key === "facebook_link"
-                    ? facebookUrl || stringValue
-                    : stringValue;
+                  const val = selected[key];
+                  const stringValue = typeof val === "string" ? val.trim() : String(val);
+                  if (!stringValue && val !== 0) return null;
 
-                return (
-                  <div key={key}>
-                    <p className="text-xs text-muted-foreground">{label}</p>
-                    {key === "facebook_link" && facebookUrl ? (
-                      <a
-                        href={facebookUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm font-medium text-primary underline underline-offset-4 break-all hover:text-primary/80"
-                      >
-                        {displayValue}
-                      </a>
-                    ) : (
-                      <p className="text-sm font-medium text-foreground">{displayValue}</p>
-                    )}
-                  </div>
-                );
-              })}
+                  const facebookUrl = key === "facebook_link"
+                    ? normalizeFacebookLink(stringValue)
+                    : "";
+                  const displayValue = key === "education_level"
+                    ? getEducationLevelLabel(stringValue)
+                    : key === "facebook_link"
+                      ? facebookUrl || stringValue
+                      : stringValue;
+
+                  return (
+                    <div key={key}>
+                      <p className="text-xs text-muted-foreground">{label}</p>
+                      {key === "facebook_link" && facebookUrl ? (
+                        <a
+                          href={facebookUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm font-medium text-primary underline underline-offset-4 break-all hover:text-primary/80"
+                        >
+                          {displayValue}
+                        </a>
+                      ) : (
+                        <p className="text-sm font-medium text-foreground">{displayValue}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </DialogContent>
