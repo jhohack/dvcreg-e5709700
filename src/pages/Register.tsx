@@ -47,6 +47,13 @@ import {
 } from "@/lib/academicCatalog";
 import { normalizeFacebookLink } from "@/lib/facebook";
 import { validateStudentPhoto } from "@/lib/photoValidation";
+import {
+  buildRegistrationMediaDataUrl,
+  deleteRegistrationMediaAsset,
+  fileToBase64,
+  fetchRegistrationMediaAsset,
+  storeRegistrationMediaAsset,
+} from "@/lib/registrationMedia";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -72,8 +79,10 @@ const initialForm = {
   spouse_name: "", nationality: "Filipino", religion: "", religion_other: "", tribe: "", tribe_other: "",
   vaccination_status: "",
   address: "", current_address: "", same_as_permanent_address: false, contact: "", email: "", facebook_link: "",
+  profile_photo_media_id: "",
   profile_photo_path: "", profile_photo_file_name: "",
   profile_photo_revision: "",
+  signature_media_id: "",
   signature_path: "", signature_file_name: "",
   signature_revision: "",
   father_first_name: "", father_middle_name: "", father_last_name: "",
@@ -279,9 +288,11 @@ const buildSubmissionPayloads = ({
     level: _level,
     year_level: _yearLevel,
     same_as_permanent_address: _sameAsPermanentAddress,
+    profile_photo_media_id,
     profile_photo_path,
     profile_photo_file_name,
     profile_photo_revision,
+    signature_media_id,
     signature_path,
     signature_file_name,
     signature_revision,
@@ -305,8 +316,10 @@ const buildSubmissionPayloads = ({
 
   const payload: TablesInsert<"admission"> = {
     ...legacyPayload,
+    profile_photo_media_id: profile_photo_media_id || null,
     profile_photo_path: profile_photo_path || null,
     profile_photo_file_name: profile_photo_file_name || null,
+    signature_media_id: signature_media_id || null,
     signature_path: signature_path || null,
     signature_file_name: signature_file_name || null,
   };
@@ -589,6 +602,18 @@ const Register = () => {
       : [];
   const facebookProfileLink = normalizeFacebookLink(form.facebook_link);
   const facebookInput = form.facebook_link.trim();
+  const profilePhotoMediaQuery = useQuery({
+    queryKey: ["registration-media-asset", form.profile_photo_media_id],
+    queryFn: () => fetchRegistrationMediaAsset(form.profile_photo_media_id || ""),
+    enabled: !photoPreviewUrl && Boolean(form.profile_photo_media_id),
+    staleTime: Infinity,
+  });
+  const signatureMediaQuery = useQuery({
+    queryKey: ["registration-media-asset", form.signature_media_id],
+    queryFn: () => fetchRegistrationMediaAsset(form.signature_media_id || ""),
+    enabled: !signaturePreviewUrl && Boolean(form.signature_media_id),
+    staleTime: Infinity,
+  });
 
   const replacePreviewUrl = (
     setter: Dispatch<SetStateAction<string | null>>,
@@ -626,7 +651,7 @@ const Register = () => {
     const previewSetter = kind === "photo" ? setPhotoPreviewUrl : setSignaturePreviewUrl;
     const errorSetter = kind === "photo" ? setPhotoUploadError : setSignatureUploadError;
     const uploadingSetter = kind === "photo" ? setPhotoUploading : setSignatureUploading;
-    const storagePath = getMediaPath(registrationDraftId, kind === "photo" ? "student-photo" : "student-signature");
+    const mediaKind = kind === "photo" ? "profile_photo" : "signature";
 
     const validationError = validateMediaFile(file, label);
     if (validationError) {
@@ -652,35 +677,33 @@ const Register = () => {
       const localPreviewUrl = URL.createObjectURL(fileToUpload);
       replacePreviewUrl(previewSetter, localPreviewUrl);
 
-      const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(storagePath, fileToUpload, {
-        upsert: true,
-        contentType: fileToUpload.type || file.type,
-        cacheControl: "3600",
+      const storedAsset = await storeRegistrationMediaAsset({
+        registrationDraftId,
+        mediaKind,
+        fileName: fileToUpload.name,
+        contentType: fileToUpload.type || file.type || "application/octet-stream",
+        contentBase64: await fileToBase64(fileToUpload),
       });
 
-      if (error) {
-        throw new Error(error.message || `Could not upload ${kind === "photo" ? "the photo" : "the signature"}.`);
-      }
-
-      const revision = String(Date.now());
-      const publicUrl = getMediaPreviewUrl(storagePath, revision);
-      replacePreviewUrl(previewSetter, publicUrl);
       setForm((prev) =>
         kind === "photo"
           ? {
               ...prev,
-              profile_photo_path: storagePath,
-              profile_photo_file_name: fileToUpload.name,
-              profile_photo_revision: revision,
+              profile_photo_media_id: storedAsset.media_id,
+              profile_photo_path: "",
+              profile_photo_file_name: storedAsset.file_name,
+              profile_photo_revision: String(Date.now()),
             }
           : {
               ...prev,
-              signature_path: storagePath,
-              signature_file_name: file.name,
-              signature_revision: revision,
+              signature_media_id: storedAsset.media_id,
+              signature_path: "",
+              signature_file_name: storedAsset.file_name,
+              signature_revision: String(Date.now()),
             }
       );
     } catch (error) {
+      replacePreviewUrl(previewSetter, null);
       errorSetter(error instanceof Error ? error.message : `Could not upload ${kind === "photo" ? "the photo" : "the signature"}.`);
       toast.error(error instanceof Error ? error.message : `Could not upload ${kind === "photo" ? "the photo" : "the signature"}.`);
       return false;
@@ -710,6 +733,25 @@ const Register = () => {
   const clearMediaField = (kind: "photo" | "signature") => {
     const previewSetter = kind === "photo" ? setPhotoPreviewUrl : setSignaturePreviewUrl;
     const errorSetter = kind === "photo" ? setPhotoUploadError : setSignatureUploadError;
+    const mediaKind = kind === "photo" ? "profile_photo" : "signature";
+
+    void (async () => {
+      const currentMediaId = kind === "photo" ? form.profile_photo_media_id : form.signature_media_id;
+      const currentPath = kind === "photo" ? form.profile_photo_path : form.signature_path;
+
+      try {
+        if (currentMediaId) {
+          await deleteRegistrationMediaAsset({
+            registrationDraftId,
+            mediaKind,
+          });
+        } else if (currentPath) {
+          await supabase.storage.from(MEDIA_BUCKET).remove([currentPath]);
+        }
+      } catch (error) {
+        console.warn("Could not clear stored registration media.", error);
+      }
+    })();
 
     replacePreviewUrl(previewSetter, null);
     errorSetter(null);
@@ -718,12 +760,14 @@ const Register = () => {
         kind === "photo"
           ? {
               ...prev,
+              profile_photo_media_id: "",
               profile_photo_path: "",
               profile_photo_file_name: "",
               profile_photo_revision: "",
             }
           : {
               ...prev,
+              signature_media_id: "",
               signature_path: "",
               signature_file_name: "",
               signature_revision: "",
@@ -733,10 +777,18 @@ const Register = () => {
 
   const mediaIsUploading = photoUploading || signatureUploading;
   const profilePhotoPreviewSrc = photoPreviewUrl ?? (
-    form.profile_photo_path ? getMediaPreviewUrl(form.profile_photo_path, form.profile_photo_revision) : null
+    profilePhotoMediaQuery.data
+      ? buildRegistrationMediaDataUrl(profilePhotoMediaQuery.data)
+      : form.profile_photo_path
+        ? getMediaPreviewUrl(form.profile_photo_path, form.profile_photo_revision)
+        : null
   );
   const signaturePreviewSrc = signaturePreviewUrl ?? (
-    form.signature_path ? getMediaPreviewUrl(form.signature_path, form.signature_revision) : null
+    signatureMediaQuery.data
+      ? buildRegistrationMediaDataUrl(signatureMediaQuery.data)
+      : form.signature_path
+        ? getMediaPreviewUrl(form.signature_path, form.signature_revision)
+        : null
   );
   const setEducationLevel = (value: string) =>
     setForm((prev) => ({
@@ -776,12 +828,12 @@ const Register = () => {
       return false;
     }
 
-    if (!form.profile_photo_path) {
+    if (!form.profile_photo_media_id && !form.profile_photo_path) {
       toast.error("Please upload the student's formal photo.");
       return false;
     }
 
-    if (!form.signature_path) {
+    if (!form.signature_media_id && !form.signature_path) {
       toast.error("Please upload the student's signature.");
       return false;
     }

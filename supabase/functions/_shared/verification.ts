@@ -76,15 +76,19 @@ function isMissingAcademicColumnsError(message: string): boolean {
     || message.includes("column admission.level does not exist")
     || message.includes("column admission.profile_photo_path does not exist")
     || message.includes("column admission.profile_photo_file_name does not exist")
+    || message.includes("column admission.profile_photo_media_id does not exist")
     || message.includes("column admission.signature_path does not exist")
     || message.includes("column admission.signature_file_name does not exist")
+    || message.includes("column admission.signature_media_id does not exist")
     || message.includes("could not find the 'education_level' column")
     || message.includes("could not find the 'program' column")
     || message.includes("could not find the 'level' column")
     || message.includes("could not find the 'profile_photo_path' column")
     || message.includes("could not find the 'profile_photo_file_name' column")
+    || message.includes("could not find the 'profile_photo_media_id' column")
     || message.includes("could not find the 'signature_path' column")
     || message.includes("could not find the 'signature_file_name' column")
+    || message.includes("could not find the 'signature_media_id' column")
 }
 
 export async function insertAdmissionPayloads(

@@ -3,13 +3,19 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { GraduationCap, Search, X, Eye } from "lucide-react";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import { GraduationCap, Search, X, Eye, Mail, MapPin, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
   fetchAcademicCatalog,
@@ -17,6 +23,10 @@ import {
   normalizeEducationLevel,
 } from "@/lib/academicCatalog";
 import { normalizeFacebookLink } from "@/lib/facebook";
+import {
+  buildRegistrationMediaDataUrl,
+  fetchRegistrationMediaAsset,
+} from "@/lib/registrationMedia";
 
 const MEDIA_BUCKET = "registration-media";
 
@@ -34,10 +44,14 @@ interface Student {
   level: string | null;
   year_level: string | null;
   date_created: string;
+  admission_status?: string | null;
+  student_information_id?: string | null;
   profile_photo_path?: string | null;
   profile_photo_file_name?: string | null;
+  profile_photo_media_id?: string | null;
   signature_path?: string | null;
   signature_file_name?: string | null;
+  signature_media_id?: string | null;
   [key: string]: string | number | boolean | null | undefined;
 }
 
@@ -77,39 +91,137 @@ const getMediaPublicUrl = (path: string | null | undefined) => {
   return supabase.storage.from(MEDIA_BUCKET).getPublicUrl(trimmedPath).data.publicUrl;
 };
 
+const getInitials = (student: Student) => {
+  const parts = [student.first_name, student.middle_name, student.last_name]
+    .map((part) => part?.trim())
+    .filter(Boolean) as string[];
+
+  if (parts.length === 0) {
+    return "S";
+  }
+
+  return parts.map((part) => part[0].toUpperCase()).join("").slice(0, 3);
+};
+
+const getAdmissionStatusLabel = (student: Student) => {
+  const rawStatus = student.admission_status?.trim().toLowerCase();
+
+  if (!rawStatus) {
+    return student.student_information_id ? "Active" : "Pending";
+  }
+
+  if (["approved", "active", "enrolled", "admitted"].includes(rawStatus)) {
+    return "Active";
+  }
+
+  if (["pending", "submitted", "reviewing", "under review"].includes(rawStatus)) {
+    return "Pending";
+  }
+
+  if (["rejected", "declined"].includes(rawStatus)) {
+    return "Rejected";
+  }
+
+  return student.admission_status.trim();
+};
+
+const getAdmissionStatusClassName = (statusLabel: string) => {
+  if (statusLabel === "Active") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (statusLabel === "Pending") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  if (statusLabel === "Rejected") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+
+  return "border-border bg-muted text-foreground";
+};
+
+const useRegistrationMediaSource = (
+  mediaId: string | null | undefined,
+  legacyPath: string | null | undefined,
+) => {
+  const mediaQuery = useQuery({
+    queryKey: ["registration-media", mediaId],
+    queryFn: () => fetchRegistrationMediaAsset(mediaId || ""),
+    enabled: Boolean(mediaId),
+    staleTime: Infinity,
+  });
+
+  const imageUrl = mediaQuery.data
+    ? buildRegistrationMediaDataUrl(mediaQuery.data)
+    : getMediaPublicUrl(legacyPath);
+
+  return {
+    imageUrl,
+    isLoading: Boolean(mediaId) && mediaQuery.isLoading,
+    isError: mediaQuery.isError,
+  };
+};
+
 const MediaPreview = ({
   title,
   fileName,
-  imageUrl,
+  mediaId,
+  legacyPath,
   alt,
 }: {
   title: string;
   fileName: string | null | undefined;
-  imageUrl: string | null;
+  mediaId: string | null | undefined;
+  legacyPath: string | null | undefined;
   alt: string;
-}) => (
-  <div className="overflow-hidden rounded-2xl border border-border bg-background">
-    <div className="border-b border-border px-4 py-3">
-      <p className="text-sm font-semibold text-foreground">{title}</p>
-      <p className="text-xs text-muted-foreground">
-        {fileName?.trim() || "No file name saved"}
-      </p>
+}) => {
+  const { imageUrl, isLoading, isError } = useRegistrationMediaSource(mediaId, legacyPath);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-background">
+      <div className="border-b border-border px-4 py-3">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground">
+          {fileName?.trim() || "No file name saved"}
+        </p>
+      </div>
+      <div className="flex items-center justify-center bg-muted/20 p-4">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={alt}
+            className="max-h-64 w-full rounded-xl border border-border/60 bg-background object-contain"
+          />
+        ) : isLoading ? (
+          <div className="flex h-44 w-full items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+            Loading {title.toLowerCase()}...
+          </div>
+        ) : (
+          <div className="flex h-44 w-full items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+            {isError && mediaId ? `Could not load ${title.toLowerCase()} from the database.` : `No ${title.toLowerCase()} available`}
+          </div>
+        )}
+      </div>
     </div>
-    <div className="flex items-center justify-center bg-muted/20 p-4">
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt={alt}
-          className="max-h-64 w-full rounded-xl border border-border/60 bg-background object-contain"
-        />
-      ) : (
-        <div className="flex h-44 w-full items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
-          No {title.toLowerCase()} available
-        </div>
-      )}
-    </div>
-  </div>
-);
+  );
+};
+
+const StudentAvatar = ({ student }: { student: Student }) => {
+  const { imageUrl, isLoading } = useRegistrationMediaSource(
+    student.profile_photo_media_id,
+    student.profile_photo_path,
+  );
+
+  return (
+    <Avatar className="h-28 w-28 shrink-0 border-4 border-background shadow-[0_10px_30px_rgba(15,23,42,0.12)] ring-1 ring-border/70">
+      <AvatarImage src={imageUrl ?? undefined} alt={`${student.first_name} ${student.last_name} profile photo`} className="object-cover" />
+      <AvatarFallback className={`bg-muted text-xl font-black tracking-wider text-foreground ${isLoading ? "animate-pulse" : ""}`}>
+        {getInitials(student)}
+      </AvatarFallback>
+    </Avatar>
+  );
+};
 
 const AdminRecords = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -329,70 +441,131 @@ const AdminRecords = () => {
       </main>
 
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold">
-              {selected && `${selected.first_name} ${selected.middle_name || ""} ${selected.last_name}`}
-            </DialogTitle>
-          </DialogHeader>
-          {selected && (
-            <div className="mt-2 space-y-6">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <MediaPreview
-                  title="Profile Photo"
-                  fileName={selected.profile_photo_file_name}
-                  imageUrl={getMediaPublicUrl(selected.profile_photo_path)}
-                  alt={`${selected.first_name} ${selected.last_name} profile photo`}
-                />
-                <MediaPreview
-                  title="Signature"
-                  fileName={selected.signature_file_name}
-                  imageUrl={getMediaPublicUrl(selected.signature_path)}
-                  alt={`${selected.first_name} ${selected.last_name} signature`}
-                />
-              </div>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold">
+            {selected && `${selected.first_name} ${selected.middle_name || ""} ${selected.last_name}`}
+          </DialogTitle>
+        </DialogHeader>
+        {selected && (
+          <div className="mt-2 space-y-6">
+            {(() => {
+              const name = `${selected.first_name} ${selected.middle_name || ""} ${selected.last_name}`.replace(/\s+/g, " ").trim();
+              const educationLabel = getEducationLevelLabel(selected.education_level || selected.department) || "-";
+              const programLabel = getStudentProgram(selected) || "-";
+              const levelLabel = getStudentLevel(selected) || "-";
+              const statusLabel = getAdmissionStatusLabel(selected);
 
-              <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-                {Object.entries(fieldLabels).map(([key, label]) => {
-                  if (key === "department" && selected.education_level) return null;
-                  if (key === "course" && selected.program) return null;
-                  if (key === "shs_track" && selected.program) return null;
-                  if (key === "year_level" && selected.level) return null;
+              return (
+                <>
+                  <div className="overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-background via-background to-muted/40 p-5 shadow-sm">
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
+                      <StudentAvatar student={selected} />
 
-                  const val = selected[key];
-                  const stringValue = typeof val === "string" ? val.trim() : String(val);
-                  if (!stringValue && val !== 0) return null;
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="truncate text-2xl font-black tracking-tight text-foreground sm:text-3xl">{name}</h2>
+                          <Badge className="rounded-full border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                            {educationLabel}
+                          </Badge>
+                          <Badge className={`rounded-full px-3 py-1 text-xs font-semibold ${getAdmissionStatusClassName(statusLabel)}`}>
+                            {statusLabel}
+                          </Badge>
+                        </div>
 
-                  const facebookUrl = key === "facebook_link"
-                    ? normalizeFacebookLink(stringValue)
-                    : "";
-                  const displayValue = key === "education_level"
-                    ? getEducationLevelLabel(stringValue)
-                    : key === "facebook_link"
-                      ? facebookUrl || stringValue
-                      : stringValue;
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                          <span className="font-medium text-foreground">{selected.student_lrn || selected.id}</span>
+                          <span>|</span>
+                          <span>{programLabel}</span>
+                          <span>|</span>
+                          <span>{levelLabel}</span>
+                        </div>
 
-                  return (
-                    <div key={key}>
-                      <p className="text-xs text-muted-foreground">{label}</p>
-                      {key === "facebook_link" && facebookUrl ? (
-                        <a
-                          href={facebookUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sm font-medium text-primary underline underline-offset-4 break-all hover:text-primary/80"
-                        >
-                          {displayValue}
-                        </a>
-                      ) : (
-                        <p className="text-sm font-medium text-foreground">{displayValue}</p>
-                      )}
+                        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                          {selected.contact && (
+                            <span className="inline-flex items-center gap-2">
+                              <Phone className="h-4 w-4" />
+                              <span>{selected.contact}</span>
+                            </span>
+                          )}
+                          {selected.email && (
+                            <span className="inline-flex items-center gap-2">
+                              <Mail className="h-4 w-4" />
+                              <span className="break-all">{selected.email}</span>
+                            </span>
+                          )}
+                          {selected.address && (
+                            <span className="inline-flex items-center gap-2">
+                              <MapPin className="h-4 w-4" />
+                              <span className="max-w-[28rem] break-words">{selected.address}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <MediaPreview
+                      title="Profile Photo"
+                      fileName={selected.profile_photo_file_name}
+                      mediaId={selected.profile_photo_media_id}
+                      legacyPath={selected.profile_photo_path}
+                      alt={`${name} profile photo`}
+                    />
+                    <MediaPreview
+                      title="Signature"
+                      fileName={selected.signature_file_name}
+                      mediaId={selected.signature_media_id}
+                      legacyPath={selected.signature_path}
+                      alt={`${name} signature`}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+                    {Object.entries(fieldLabels).map(([key, label]) => {
+                      if (key === "department" && selected.education_level) return null;
+                      if (key === "course" && selected.program) return null;
+                      if (key === "shs_track" && selected.program) return null;
+                      if (key === "year_level" && selected.level) return null;
+
+                      const val = selected[key];
+                      const stringValue = typeof val === "string" ? val.trim() : String(val);
+                      if (!stringValue && val !== 0) return null;
+
+                      const facebookUrl = key === "facebook_link"
+                        ? normalizeFacebookLink(stringValue)
+                        : "";
+                      const displayValue = key === "education_level"
+                        ? getEducationLevelLabel(stringValue)
+                        : key === "facebook_link"
+                          ? facebookUrl || stringValue
+                          : stringValue;
+
+                      return (
+                        <div key={key}>
+                          <p className="text-xs text-muted-foreground">{label}</p>
+                          {key === "facebook_link" && facebookUrl ? (
+                            <a
+                              href={facebookUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm font-medium text-primary underline underline-offset-4 break-all hover:text-primary/80"
+                            >
+                              {displayValue}
+                            </a>
+                          ) : (
+                            <p className="text-sm font-medium text-foreground">{displayValue}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
         </DialogContent>
       </Dialog>
     </div>
