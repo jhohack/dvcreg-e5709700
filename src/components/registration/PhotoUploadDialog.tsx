@@ -65,7 +65,7 @@ const PhotoUploadDialog = ({
   onClear,
 }: PhotoUploadDialogProps) => {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"file" | "live">("live");
+  const [tab, setTab] = useState<"choice" | "file" | "live">("choice");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraBusy, setCameraBusy] = useState(false);
   const [capturedPreviewUrl, setCapturedPreviewUrl] = useState<string | null>(null);
@@ -76,7 +76,6 @@ const PhotoUploadDialog = ({
   const [cleanupProgress, setCleanupProgress] = useState(0);
   const [cleanupPastEstimate, setCleanupPastEstimate] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const instantCaptureInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const cameraWarmupPromiseRef = useRef<Promise<MediaStream | null> | null>(null);
@@ -85,18 +84,6 @@ const PhotoUploadDialog = ({
 
   const busy = uploading || submitting || cameraBusy;
   const faceDetectionSupported = typeof window !== "undefined" && "FaceDetector" in window;
-
-  const shouldPreferInstantCapture = () => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
-    return (
-      window.matchMedia("(pointer: coarse)").matches ||
-      window.innerWidth < 768 ||
-      (navigator.maxTouchPoints ?? 0) > 1
-    );
-  };
 
   const stopCameraStream = () => {
     cameraSessionActiveRef.current = false;
@@ -207,9 +194,7 @@ const PhotoUploadDialog = ({
       return null;
     });
     setCapturedFile(null);
-    setTab("live");
-
-    void startCameraStream(true);
+    setTab("choice");
 
     return () => {
       stopCameraStream();
@@ -413,21 +398,7 @@ const PhotoUploadDialog = ({
   const dialogTitle = previewUrl ? "Replace Student Photo" : "Upload Student Photo";
 
   const handlePrimaryAction = () => {
-    if (shouldPreferInstantCapture()) {
-      instantCaptureInputRef.current?.click();
-      return;
-    }
-
-    void startCameraStream(false);
     setOpen(true);
-  };
-
-  const handlePrimaryActionPressStart = () => {
-    if (shouldPreferInstantCapture()) {
-      return;
-    }
-
-    void startCameraStream(false);
   };
 
   return (
@@ -443,21 +414,8 @@ const PhotoUploadDialog = ({
         error={error}
         previewAspectClassName="aspect-square"
         icon={<Camera className="h-5 w-5" />}
-        onActionPressStart={handlePrimaryActionPressStart}
         onAction={handlePrimaryAction}
         onClear={onClear}
-      />
-
-      <Input
-        ref={instantCaptureInputRef}
-        id="student-photo-instant"
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        capture="user"
-        className="hidden"
-        onChange={(event) => {
-          void handleFileSelect(event);
-        }}
       />
 
       <Dialog
@@ -465,7 +423,7 @@ const PhotoUploadDialog = ({
         onOpenChange={(nextOpen) => {
           setOpen(nextOpen);
           if (!nextOpen) {
-            setTab("file");
+            setTab("choice");
             setCameraError(null);
             clearCaptured();
           }
@@ -592,6 +550,40 @@ const PhotoUploadDialog = ({
                     </AlertDescription>
                   </Alert>
                 )}
+
+                <TabsContent value="choice" className="space-y-4 pt-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      className="rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => setTab("file")}
+                      disabled={busy}
+                    >
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Upload className="h-5 w-5" />
+                      </div>
+                      <p className="mt-4 font-semibold text-foreground">Upload File</p>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        Choose an existing JPG, PNG, or WEBP photo from your device.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => setTab("live")}
+                      disabled={busy}
+                    >
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Camera className="h-5 w-5" />
+                      </div>
+                      <p className="mt-4 font-semibold text-foreground">Live Camera</p>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        Open the camera preview and capture a new student photo.
+                      </p>
+                    </button>
+                  </div>
+                </TabsContent>
 
                 <TabsContent value="file" className="space-y-4 pt-4">
                   <div className="rounded-2xl border border-border bg-muted/20 p-5">
