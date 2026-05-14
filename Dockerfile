@@ -23,12 +23,13 @@ RUN apt-get update \
         libjpeg62-turbo-dev \
         libpng-dev \
         libwebp-dev \
+        libcurl4-openssl-dev \
         libgomp1 \
         python3 \
         python3-pip \
         python3-venv \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install -j"$(nproc)" gd \
+    && docker-php-ext-install -j"$(nproc)" gd curl \
     && python3 -m venv /opt/rembg \
     && /opt/rembg/bin/pip install --no-cache-dir --upgrade pip \
     && /opt/rembg/bin/pip install --no-cache-dir "rembg[cpu]" \
