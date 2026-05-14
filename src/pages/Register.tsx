@@ -124,6 +124,8 @@ const MEDIA_BUCKET = "registration-media";
 const DRAFT_STORAGE_KEY = "dvcreg-registration-draft-id";
 const ACCEPTED_MEDIA_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_MEDIA_SIZE_BYTES = 5 * 1024 * 1024;
+const PHOTO_CLEANUP_MAX_SIDE = 1200;
+const PHOTO_CLEANUP_JPEG_QUALITY = 0.9;
 
 const createRegistrationDraftId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -418,6 +420,85 @@ const renderBlobOnWhiteCanvas = async (blob: Blob): Promise<Blob> => {
   }
 };
 
+const loadImageFromBlob = async (blob: Blob): Promise<HTMLImageElement> => {
+  const objectUrl = URL.createObjectURL(blob);
+
+  try {
+    const image = new Image();
+    image.decoding = "async";
+
+    const ready = new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Could not prepare the photo for cleanup."));
+    });
+
+    image.src = objectUrl;
+
+    if (typeof image.decode === "function") {
+      try {
+        await image.decode();
+      } catch {
+        await ready;
+      }
+    } else {
+      await ready;
+    }
+
+    if (!image.naturalWidth || !image.naturalHeight) {
+      throw new Error("Could not prepare the photo for cleanup.");
+    }
+
+    return image;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+};
+
+const preparePhotoForCleanup = async (file: File): Promise<File> => {
+  const image = await loadImageFromBlob(file);
+  const sourceWidth = image.naturalWidth;
+  const sourceHeight = image.naturalHeight;
+  const longestSide = Math.max(sourceWidth, sourceHeight);
+  const scale = Math.min(1, PHOTO_CLEANUP_MAX_SIDE / longestSide);
+  const width = Math.max(1, Math.round(sourceWidth * scale));
+  const height = Math.max(1, Math.round(sourceHeight * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) {
+    throw new Error("Could not prepare the photo for cleanup.");
+  }
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(image, 0, 0, width, height);
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (result) {
+        resolve(result);
+        return;
+      }
+
+      reject(new Error("Could not prepare the photo for cleanup."));
+    }, "image/jpeg", PHOTO_CLEANUP_JPEG_QUALITY);
+  });
+
+  if (blob.size >= file.size && file.type === "image/jpeg") {
+    return file;
+  }
+
+  return new File([blob], file.name.replace(/\.[^.]+$/, "") || file.name, {
+    type: "image/jpeg",
+    lastModified: file.lastModified,
+  });
+};
+
 const removePhotoBackgroundInBrowser = async (file: File): Promise<File> => {
   const { removeBackground } = await import("@imgly/background-removal");
   const cleanedBlob = await removeBackground(file, {
@@ -473,9 +554,11 @@ const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
 };
 
 const processPhotoBackground = async (file: File): Promise<File> => {
+  const cleanupInput = await preparePhotoForCleanup(file);
+
   if (configuredApiBase) {
     try {
-      const cleanedBlob = await postBinaryToPhpApi("remove-photo-background.php", file);
+      const cleanedBlob = await postBinaryToPhpApi("remove-photo-background.php", cleanupInput);
       return new File([cleanedBlob], buildProcessedPhotoFileName(file.name), {
         type: "image/jpeg",
       });
@@ -485,7 +568,7 @@ const processPhotoBackground = async (file: File): Promise<File> => {
   }
 
   try {
-    return await removePhotoBackgroundInBrowser(file);
+    return await removePhotoBackgroundInBrowser(cleanupInput);
   } catch (error) {
     throw new Error(
       error instanceof Error && error.message.trim() !== ""
