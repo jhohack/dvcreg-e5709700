@@ -43,8 +43,8 @@ const photoQuickChecks = [
 ] as const;
 
 const photoExamples = [
-  { label: "Example 1", src: "/photo-example-1.svg", alt: "Formal 2x2 student photo example 1" },
-  { label: "Example 2", src: "/photo-example-2.svg", alt: "Formal 2x2 student photo example 2" },
+  { label: "Male reference", src: "/photo-example-1.jpg", alt: "Male formal 2x2 student photo reference" },
+  { label: "Female reference", src: "/photo-example-2.jpg", alt: "Female formal 2x2 student photo reference" },
 ] as const;
 
 type PhotoUploadDialogProps = {
@@ -547,8 +547,8 @@ const PhotoUploadDialog = ({
                 <div className="grid gap-3 sm:grid-cols-2">
                   {photoExamples.map((example) => (
                     <div key={example.label} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                      <div className="aspect-square bg-muted/20">
-                        <img src={example.src} alt={example.alt} className="h-full w-full object-cover" />
+                      <div className="aspect-square bg-white">
+                        <img src={example.src} alt={example.alt} className="h-full w-full object-contain" />
                       </div>
                       <div className="flex items-center justify-between border-t border-border px-3 py-2.5">
                         <p className="text-sm font-medium text-foreground">{example.label}</p>
