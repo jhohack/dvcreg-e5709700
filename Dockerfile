@@ -1,0 +1,50 @@
+FROM node:22-bookworm-slim AS frontend-build
+
+WORKDIR /app
+
+ARG VITE_API_BASE_URL=/api
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+FROM php:8.3-apache
+
+ENV PORT=8080 \
+    REMBG_COMMAND=rembg \
+    REMBG_MODEL=isnet-general-use
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libfreetype6-dev \
+        libjpeg62-turbo-dev \
+        libpng-dev \
+        libwebp-dev \
+        libgomp1 \
+        python3 \
+        python3-pip \
+        python3-venv \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-install -j"$(nproc)" gd \
+    && python3 -m venv /opt/rembg \
+    && /opt/rembg/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/rembg/bin/pip install --no-cache-dir "rembg[cpu]" \
+    && ln -s /opt/rembg/bin/rembg /usr/local/bin/rembg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY deployment/apache/000-default.conf.template /etc/apache2/sites-available/000-default.conf.template
+COPY deployment/apache/start-app.sh /usr/local/bin/start-app
+COPY --from=frontend-build /app/dist/ /var/www/html/
+COPY api/ /var/www/html/api/
+
+RUN a2enmod rewrite headers \
+    && chmod +x /usr/local/bin/start-app \
+    && chown -R www-data:www-data /var/www/html
+
+EXPOSE 8080
+
+CMD ["start-app"]

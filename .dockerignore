@@ -1,0 +1,12 @@
+.git
+.qodo
+.sixth
+node_modules
+dist
+.env
+.env.local
+*.log
+deployment/php-api
+composer.phar
+playwright-report
+test-results
