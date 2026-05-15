@@ -1,9 +1,37 @@
-import { Code2, GraduationCap, Sparkles, Users } from "lucide-react";
+import { Code2, GraduationCap, Users } from "lucide-react";
 
 const developers = ["John Carl Banate", "Jhorose Land Firmeza", "Jerome Pantonial"];
 
+const syntaxLogoFallback = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#03160f"/>
+      <stop offset="1" stop-color="#08241e"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <rect width="160" height="160" fill="url(#bg)"/>
+  <g opacity=".65" stroke="#10bfa5" stroke-width="2" stroke-linecap="round">
+    <path d="M-10 30h34m9 0h80m11 0h44"/>
+    <path d="M4 53h60m8 0h18m12 0h74"/>
+    <path d="M-8 96h74m14 0h52m9 0h38"/>
+    <path d="M18 120h42m12 0h86"/>
+  </g>
+  <g filter="url(#shadow)" fill="none" stroke="#f4f5f3" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" transform="rotate(-8 80 73)">
+    <path d="M52 34 25 61l27 27"/>
+    <path d="M108 34 135 61l-27 27"/>
+    <path d="M102 54 58 98"/>
+  </g>
+  <text x="80" y="139" fill="#f4f5ff" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" letter-spacing="8" text-anchor="middle">SYNTAX</text>
+</svg>
+`)}`;
+
 const AppFooter = () => {
   const year = new Date().getFullYear();
+  const syntaxLogoSrc = `${import.meta.env.BASE_URL}syntax%20logo%20new.png`;
 
   return (
     <footer className="border-t border-border bg-card">
@@ -41,8 +69,16 @@ const AppFooter = () => {
                 </p>
                 <h3 className="mt-1 text-lg font-bold text-section-header">Triple J</h3>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <Sparkles className="h-5 w-5" />
+              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-border bg-[#03160f] shadow-sm">
+                <img
+                  src={syntaxLogoSrc}
+                  alt="Syntax logo mark"
+                  onError={(event) => {
+                    event.currentTarget.onerror = null;
+                    event.currentTarget.src = syntaxLogoFallback;
+                  }}
+                  className="h-full w-full object-contain"
+                />
               </div>
             </div>
 
