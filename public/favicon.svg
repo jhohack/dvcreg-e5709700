@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <title>DVC logo</title>
+  <defs>
+    <clipPath id="logo-circle">
+      <circle cx="250" cy="250" r="244" />
+    </clipPath>
+  </defs>
+  <image href="/dvclogo.jpg" width="500" height="500" preserveAspectRatio="xMidYMid slice" clip-path="url(#logo-circle)" />
+</svg>
