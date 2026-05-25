@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, Camera, CheckCircle2, Image as ImageIcon, Info, Upload, RefreshCcw } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { AlertTriangle, Camera, CheckCircle2, Copy, ExternalLink, Image as ImageIcon, Info, Upload, RefreshCcw, Smartphone } from "lucide-react";
+import QRCode from "qrcode";
+import { toast } from "sonner";
 
 import MediaUploadCard from "@/components/registration/MediaUploadCard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -9,6 +12,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  buildRegistrationMediaDataUrl,
+  fetchRegistrationMediaAssetByDraft,
+  type RegistrationMediaAsset,
+} from "@/lib/registrationMedia";
 
 const ACCEPTED_MEDIA_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_MEDIA_SIZE_BYTES = 5 * 1024 * 1024;
@@ -50,22 +58,26 @@ const photoExamples = [
 type PhotoUploadDialogProps = {
   previewUrl: string | null;
   fileName: string | null;
+  registrationDraftId: string;
   uploading?: boolean;
   error?: string | null;
   onUploadFile: (file: File) => Promise<boolean>;
+  onRemotePhotoReady: (asset: RegistrationMediaAsset) => void;
   onClear: () => void;
 };
 
 const PhotoUploadDialog = ({
   previewUrl,
   fileName,
+  registrationDraftId,
   uploading = false,
   error = null,
   onUploadFile,
+  onRemotePhotoReady,
   onClear,
 }: PhotoUploadDialogProps) => {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"choice" | "file" | "live">("choice");
+  const [tab, setTab] = useState<"choice" | "file" | "live" | "remote">("choice");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [cameraBusy, setCameraBusy] = useState(false);
   const [capturedPreviewUrl, setCapturedPreviewUrl] = useState<string | null>(null);
@@ -75,15 +87,31 @@ const PhotoUploadDialog = ({
   const [cleanupCountdown, setCleanupCountdown] = useState<number>(3);
   const [cleanupProgress, setCleanupProgress] = useState(0);
   const [cleanupPastEstimate, setCleanupPastEstimate] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const cameraWarmupPromiseRef = useRef<Promise<MediaStream | null> | null>(null);
   const cameraSessionActiveRef = useRef(false);
+  const lastRemoteMediaIdRef = useRef<string | null>(null);
+  const remoteStartedAtRef = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const busy = uploading || submitting || cameraBusy;
   const faceDetectionSupported = typeof window !== "undefined" && "FaceDetector" in window;
+  const remoteUploadUrl = typeof window === "undefined"
+    ? ""
+    : `${window.location.origin}/mobile-photo-upload?draft=${encodeURIComponent(registrationDraftId)}`;
+  const remotePhotoQuery = useQuery({
+    queryKey: ["registration-remote-photo", registrationDraftId],
+    queryFn: () => fetchRegistrationMediaAssetByDraft({
+      registrationDraftId,
+      mediaKind: "profile_photo",
+    }),
+    enabled: open && tab === "remote" && Boolean(registrationDraftId),
+    refetchInterval: open && tab === "remote" ? 2500 : false,
+    staleTime: 0,
+  });
 
   const stopCameraStream = () => {
     cameraSessionActiveRef.current = false;
@@ -213,6 +241,63 @@ const PhotoUploadDialog = ({
 
     void startCameraStream(true);
   }, [open, tab, attachStreamToVideo, startCameraStream]);
+
+  useEffect(() => {
+    if (open && tab === "remote") {
+      remoteStartedAtRef.current = Date.now();
+      lastRemoteMediaIdRef.current = null;
+      return;
+    }
+
+    remoteStartedAtRef.current = null;
+  }, [open, tab]);
+
+  useEffect(() => {
+    if (!open || tab !== "remote" || !remoteUploadUrl) {
+      setQrCodeUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    void QRCode.toDataURL(remoteUploadUrl, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 240,
+    }).then(
+      (dataUrl) => {
+        if (!cancelled) {
+          setQrCodeUrl(dataUrl);
+        }
+      },
+      () => {
+        if (!cancelled) {
+          setQrCodeUrl(null);
+        }
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, remoteUploadUrl, tab]);
+
+  useEffect(() => {
+    const remoteAsset = remotePhotoQuery.data;
+    if (!remoteAsset?.media_id || remoteAsset.media_id === lastRemoteMediaIdRef.current) {
+      return;
+    }
+
+    const remoteUpdatedAt = new Date(remoteAsset.updated_at ?? remoteAsset.created_at ?? "").getTime();
+    const remoteStartedAt = remoteStartedAtRef.current;
+    if (remoteStartedAt && Number.isFinite(remoteUpdatedAt) && remoteUpdatedAt < remoteStartedAt - 1000) {
+      return;
+    }
+
+    lastRemoteMediaIdRef.current = remoteAsset.media_id;
+    onRemotePhotoReady(remoteAsset);
+    setOpen(false);
+    toast.success("Photo received from the other device.");
+  }, [onRemotePhotoReady, remotePhotoQuery.data]);
 
   useEffect(() => {
     return () => {
@@ -401,6 +486,19 @@ const PhotoUploadDialog = ({
     setOpen(true);
   };
 
+  const copyRemoteUploadLink = async () => {
+    if (!remoteUploadUrl) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(remoteUploadUrl);
+      toast.success("Upload link copied.");
+    } catch {
+      toast.error("Could not copy the upload link.");
+    }
+  };
+
   return (
     <>
       <MediaUploadCard
@@ -523,10 +621,11 @@ const PhotoUploadDialog = ({
             </div>
 
             <div className="space-y-4">
-              <Tabs value={tab} onValueChange={(value) => setTab(value as "file" | "live")}>
-                <TabsList className="grid w-full grid-cols-2">
+              <Tabs value={tab} onValueChange={(value) => setTab(value as "file" | "live" | "remote")}>
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="file">Upload File</TabsTrigger>
                   <TabsTrigger value="live">Live Camera</TabsTrigger>
+                  <TabsTrigger value="remote">Other Device</TabsTrigger>
                 </TabsList>
 
                 {submitting && (
@@ -552,7 +651,7 @@ const PhotoUploadDialog = ({
                 )}
 
                 <TabsContent value="choice" className="space-y-4 pt-4">
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-3">
                     <button
                       type="button"
                       className="rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
@@ -580,6 +679,21 @@ const PhotoUploadDialog = ({
                       <p className="mt-4 font-semibold text-foreground">Live Camera</p>
                       <p className="mt-1 text-sm leading-6 text-muted-foreground">
                         Open the camera preview and capture a new student photo.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => setTab("remote")}
+                      disabled={busy}
+                    >
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Smartphone className="h-5 w-5" />
+                      </div>
+                      <p className="mt-4 font-semibold text-foreground">Use Another Device</p>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        Scan a code on a phone, upload there, and receive it here automatically.
                       </p>
                     </button>
                   </div>
@@ -626,6 +740,81 @@ const PhotoUploadDialog = ({
                       void handleFileSelect(event);
                     }}
                   />
+                </TabsContent>
+
+                <TabsContent value="remote" className="space-y-4 pt-4">
+                  <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+                    <div className="rounded-2xl border border-border bg-muted/20 p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Use another device</p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            Open this link on a phone to take or choose the student photo.
+                          </p>
+                        </div>
+                        <Badge variant="secondary">
+                          {remotePhotoQuery.isFetching ? "Watching" : "Ready"}
+                        </Badge>
+                      </div>
+
+                      <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-white p-4">
+                        {qrCodeUrl ? (
+                          <img src={qrCodeUrl} alt="QR code for mobile student photo upload" className="mx-auto h-56 w-56" />
+                        ) : (
+                          <div className="flex h-56 items-center justify-center text-center text-sm text-muted-foreground">
+                            Upload link is not ready.
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-4 rounded-xl border border-border bg-background px-3 py-2">
+                        <p className="break-all text-xs text-muted-foreground">{remoteUploadUrl}</p>
+                      </div>
+
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                        <Button type="button" className="w-full sm:w-auto" onClick={() => void copyRemoteUploadLink()} disabled={!remoteUploadUrl}>
+                          <Copy className="h-4 w-4" />
+                          Copy Link
+                        </Button>
+                        <Button type="button" variant="outline" className="w-full sm:w-auto" asChild>
+                          <a href={remoteUploadUrl} target="_blank" rel="noreferrer">
+                            <ExternalLink className="h-4 w-4" />
+                            Open Link
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                      {remotePhotoQuery.data?.content_base64 ? (
+                        <div className="space-y-3">
+                          <div className="overflow-hidden rounded-2xl border border-border bg-muted/20">
+                            <img
+                              src={buildRegistrationMediaDataUrl(remotePhotoQuery.data)}
+                              alt="Photo received from another device"
+                              className="aspect-square w-full object-cover"
+                            />
+                          </div>
+                          <p className="text-sm font-semibold text-success">Photo received. Closing this modal now.</p>
+                        </div>
+                      ) : (
+                        <div className="flex min-h-[320px] flex-col items-center justify-center text-center">
+                          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                            <Smartphone className="h-8 w-8" />
+                          </div>
+                          <h3 className="mt-4 text-lg font-semibold text-foreground">Waiting for the phone upload</h3>
+                          <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+                            Keep this modal open. Once the phone sends the photo, this form will fill the Student Photo automatically.
+                          </p>
+                          {remotePhotoQuery.isError && (
+                            <p className="mt-4 text-sm font-medium text-destructive">
+                              Could not check for the phone upload yet. This will keep trying.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="live" className="space-y-4 pt-4">

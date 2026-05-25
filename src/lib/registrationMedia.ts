@@ -68,6 +68,16 @@ export const fetchRegistrationMediaAsset = async (mediaId: string): Promise<Regi
   });
 };
 
+export const fetchRegistrationMediaAssetByDraft = async (input: {
+  registrationDraftId: string;
+  mediaKind: RegistrationMediaKind;
+}): Promise<RegistrationMediaRpcResponse> => {
+  return await callRegistrationMediaRpc<RegistrationMediaRpcResponse>("get_registration_media_asset_by_draft", {
+    p_registration_draft_id: input.registrationDraftId,
+    p_media_kind: input.mediaKind,
+  });
+};
+
 export const deleteRegistrationMediaAsset = async (input: {
   registrationDraftId: string;
   mediaKind: RegistrationMediaKind;

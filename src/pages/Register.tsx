@@ -48,10 +48,16 @@ import {
 import { normalizeFacebookLink } from "@/lib/facebook";
 import { validateStudentPhoto } from "@/lib/photoValidation";
 import {
+  ACCEPTED_PHOTO_TYPES,
+  MAX_PHOTO_SIZE_BYTES,
+  processPhotoBackground,
+} from "@/lib/photoProcessing";
+import {
   buildRegistrationMediaDataUrl,
   deleteRegistrationMediaAsset,
   fileToBase64,
   fetchRegistrationMediaAsset,
+  type RegistrationMediaAsset,
   storeRegistrationMediaAsset,
 } from "@/lib/registrationMedia";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
@@ -59,9 +65,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const FORM_STORAGE_KEY = "dvcreg-registration-form";
 const VERIFICATION_STORAGE_KEY = "dvcreg-registration-verification";
-const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
 const verificationServiceUnavailableMessage = "Verification service is unavailable right now. Please try again in a moment.";
-const photoCleanupServiceUnavailableMessage = "Photo cleanup service is unavailable right now. Please try again in a moment.";
 const privacyNoticeText = [
   "By submitting this form, you consent to the collection, storage, and processing of your personal information, student photo, and signature for enrollment, verification, academic recordkeeping, and registrar processing.",
   "Your information is handled securely and is accessible only to authorized school personnel. It will not be sold or shared with unauthorized parties. By continuing, you acknowledge that you have read and understood this notice and agree to the use of your data for these official school purposes.",
@@ -122,10 +126,8 @@ type VerifyCodeResponse = {
 
 const MEDIA_BUCKET = "registration-media";
 const DRAFT_STORAGE_KEY = "dvcreg-registration-draft-id";
-const ACCEPTED_MEDIA_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const MAX_MEDIA_SIZE_BYTES = 5 * 1024 * 1024;
-const PHOTO_CLEANUP_MAX_SIDE = 1200;
-const PHOTO_CLEANUP_JPEG_QUALITY = 0.9;
+const ACCEPTED_MEDIA_TYPES = ACCEPTED_PHOTO_TYPES;
+const MAX_MEDIA_SIZE_BYTES = MAX_PHOTO_SIZE_BYTES;
 
 const createRegistrationDraftId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -195,14 +197,6 @@ const getMediaPreviewUrl = (path: string, revision?: string | null) => {
 
   const separator = publicUrl.includes("?") ? "&" : "?";
   return `${publicUrl}${separator}v=${encodeURIComponent(revision)}`;
-};
-
-const buildProcessedPhotoFileName = (originalFileName: string) => {
-  const trimmedName = originalFileName.trim();
-  const lastDotIndex = trimmedName.lastIndexOf(".");
-  const baseName = lastDotIndex > 0 ? trimmedName.slice(0, lastDotIndex) : trimmedName;
-
-  return `${baseName || "student-photo"}-white.jpg`;
 };
 
 const restoreForm = (): RegistrationForm => {
@@ -379,180 +373,6 @@ const maskEmail = (email: string) => {
   return `${visibleStart}${maskedMiddle}${visibleEnd}@${domain}`;
 };
 
-const postBinaryToPhpApi = async (path: string, body: Blob): Promise<Blob> => {
-  let response: Response;
-
-  try {
-    response = await fetch(`${configuredApiBase}/${path}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": body.type || "application/octet-stream",
-      },
-      body,
-    });
-  } catch {
-    throw new Error(photoCleanupServiceUnavailableMessage);
-  }
-
-  if (!response.ok) {
-    const contentType = response.headers.get("content-type") ?? "";
-    const text = await response.text().catch(() => "");
-    const data = contentType.includes("application/json") && text
-      ? (() => {
-          try {
-            return JSON.parse(text) as { message?: unknown };
-          } catch {
-            return null;
-          }
-        })()
-      : null;
-
-    const message = typeof data?.message === "string" && data.message.trim()
-      ? data.message.trim()
-      : text.trim() || "Could not clean the photo background.";
-
-    throw new Error(message);
-  }
-
-  return await response.blob();
-};
-
-const renderBlobOnWhiteCanvas = async (blob: Blob): Promise<Blob> => {
-  const objectUrl = URL.createObjectURL(blob);
-
-  try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const element = new Image();
-      element.onload = () => resolve(element);
-      element.onerror = () => reject(new Error("Could not process the cleaned photo."));
-      element.src = objectUrl;
-    });
-
-    const canvas = document.createElement("canvas");
-    const width = image.naturalWidth || image.width;
-    const height = image.naturalHeight || image.height;
-    canvas.width = width;
-    canvas.height = height;
-
-    const context = canvas.getContext("2d");
-    if (!context) {
-      throw new Error("Could not prepare the cleaned photo.");
-    }
-
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, width, height);
-    context.drawImage(image, 0, 0, width, height);
-
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((result) => {
-        if (result) {
-          resolve(result);
-          return;
-        }
-
-        reject(new Error("Could not render the cleaned photo."));
-      }, "image/jpeg", 0.97);
-    });
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-};
-
-const loadImageFromBlob = async (blob: Blob): Promise<HTMLImageElement> => {
-  const objectUrl = URL.createObjectURL(blob);
-
-  try {
-    const image = new Image();
-    image.decoding = "async";
-
-    const ready = new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error("Could not prepare the photo for cleanup."));
-    });
-
-    image.src = objectUrl;
-
-    if (typeof image.decode === "function") {
-      try {
-        await image.decode();
-      } catch {
-        await ready;
-      }
-    } else {
-      await ready;
-    }
-
-    if (!image.naturalWidth || !image.naturalHeight) {
-      throw new Error("Could not prepare the photo for cleanup.");
-    }
-
-    return image;
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
-};
-
-const preparePhotoForCleanup = async (file: File): Promise<File> => {
-  const image = await loadImageFromBlob(file);
-  const sourceWidth = image.naturalWidth;
-  const sourceHeight = image.naturalHeight;
-  const longestSide = Math.max(sourceWidth, sourceHeight);
-  const scale = Math.min(1, PHOTO_CLEANUP_MAX_SIDE / longestSide);
-  const width = Math.max(1, Math.round(sourceWidth * scale));
-  const height = Math.max(1, Math.round(sourceHeight * scale));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext("2d", { alpha: false });
-  if (!context) {
-    throw new Error("Could not prepare the photo for cleanup.");
-  }
-
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, width, height);
-  context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = "high";
-  context.drawImage(image, 0, 0, width, height);
-
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((result) => {
-      if (result) {
-        resolve(result);
-        return;
-      }
-
-      reject(new Error("Could not prepare the photo for cleanup."));
-    }, "image/jpeg", PHOTO_CLEANUP_JPEG_QUALITY);
-  });
-
-  if (blob.size >= file.size && file.type === "image/jpeg") {
-    return file;
-  }
-
-  return new File([blob], file.name.replace(/\.[^.]+$/, "") || file.name, {
-    type: "image/jpeg",
-    lastModified: file.lastModified,
-  });
-};
-
-const removePhotoBackgroundInBrowser = async (file: File): Promise<File> => {
-  const { removeBackground } = await import("@imgly/background-removal");
-  const cleanedBlob = await removeBackground(file, {
-    model: "isnet_fp16",
-    output: {
-      format: "image/png",
-      type: "foreground",
-    },
-  });
-
-  const flattenedBlob = await renderBlobOnWhiteCanvas(cleanedBlob);
-  return new File([flattenedBlob], buildProcessedPhotoFileName(file.name), {
-    type: "image/jpeg",
-  });
-};
-
 const postJsonToEdgeFunction = async <T,>(path: string, body: unknown): Promise<T> => {
   const functionName = verificationFunctionByPath[path];
   if (!functionName) {
@@ -589,31 +409,6 @@ const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
   }
 
   throw new Error("Unsupported verification request.");
-};
-
-const processPhotoBackground = async (file: File): Promise<File> => {
-  const cleanupInput = await preparePhotoForCleanup(file);
-
-  if (configuredApiBase) {
-    try {
-      const cleanedBlob = await postBinaryToPhpApi("remove-photo-background.php", cleanupInput);
-      return new File([cleanedBlob], buildProcessedPhotoFileName(file.name), {
-        type: "image/jpeg",
-      });
-    } catch (error) {
-      console.warn("Server photo cleanup failed. Falling back to browser cleanup.", error);
-    }
-  }
-
-  try {
-    return await removePhotoBackgroundInBrowser(cleanupInput);
-  } catch (error) {
-    throw new Error(
-      error instanceof Error && error.message.trim() !== ""
-        ? error.message
-        : photoCleanupServiceUnavailableMessage,
-    );
-  }
 };
 
 const Register = () => {
@@ -841,6 +636,22 @@ const Register = () => {
     }
 
     return await uploadMediaFile({ file, kind: "photo" });
+  };
+
+  const handleRemotePhotoReady = (asset: RegistrationMediaAsset) => {
+    if (asset.media_kind !== "profile_photo" || !asset.content_base64) {
+      return;
+    }
+
+    replacePreviewUrl(setPhotoPreviewUrl, buildRegistrationMediaDataUrl(asset));
+    setPhotoUploadError(null);
+    setForm((prev) => ({
+      ...prev,
+      profile_photo_media_id: asset.media_id,
+      profile_photo_path: "",
+      profile_photo_file_name: asset.file_name,
+      profile_photo_revision: String(Date.now()),
+    }));
   };
 
   const handleSignatureUpload = async (file: File | null) => {
@@ -1569,9 +1380,11 @@ const Register = () => {
               <PhotoUploadDialog
               previewUrl={profilePhotoPreviewSrc}
               fileName={form.profile_photo_file_name || null}
+              registrationDraftId={registrationDraftId}
               uploading={photoUploading}
               error={photoUploadError}
               onUploadFile={handlePhotoUpload}
+              onRemotePhotoReady={handleRemotePhotoReady}
               onClear={() => clearMediaField("photo")}
             />
 

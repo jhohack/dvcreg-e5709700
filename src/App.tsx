@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Register from "./pages/Register";
 import AdminRecords from "./pages/AdminRecords";
+import MobilePhotoUpload from "./pages/MobilePhotoUpload";
 import NotFound from "./pages/NotFound";
 import AppFooter from "./components/AppFooter";
 
@@ -21,6 +22,7 @@ const App = () => (
           <div className="flex-1">
             <Routes>
               <Route path="/" element={<Register />} />
+              <Route path="/mobile-photo-upload" element={<MobilePhotoUpload />} />
               <Route path="/admin" element={<AdminRecords />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
