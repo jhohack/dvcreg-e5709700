@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Eraser, Signature, Undo2, CheckCircle2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ClipboardEvent as ReactClipboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { Clipboard, Eraser, FileImage, Signature, Undo2, CheckCircle2, Upload } from "lucide-react";
 
 import MediaUploadCard from "@/components/registration/MediaUploadCard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 type SignaturePoint = {
@@ -14,6 +17,9 @@ type SignaturePoint = {
 };
 
 type SignatureStroke = SignaturePoint[];
+
+const ACCEPTED_SIGNATURE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_SIGNATURE_SIZE_BYTES = 5 * 1024 * 1024;
 
 type SignaturePadDialogProps = {
   previewUrl: string | null;
@@ -62,8 +68,10 @@ const SignaturePadDialog = ({
   const [strokes, setStrokes] = useState<SignatureStroke[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [padError, setPadError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"draw" | "upload" | "paste">("draw");
   const [isDrawing, setIsDrawing] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const strokesRef = useRef<SignatureStroke[]>([]);
   const draftStrokeRef = useRef<SignatureStroke | null>(null);
@@ -71,7 +79,7 @@ const SignaturePadDialog = ({
   const canvasSizeRef = useRef({ width: 0, height: 0 });
 
   const busy = uploading || submitting;
-  const dialogTitle = previewUrl ? "Replace Student Signature" : "Draw Student Signature";
+  const dialogTitle = previewUrl ? "Replace Student Signature" : "Add Student Signature";
 
   const drawCanvas = useCallback((committedStrokes: SignatureStroke[] = strokesRef.current, draftStroke: SignatureStroke | null = null) => {
     const canvas = canvasRef.current;
@@ -181,6 +189,12 @@ const SignaturePadDialog = ({
     };
   }, [open, syncCanvasSize]);
 
+  useEffect(() => {
+    if (open && tab === "draw") {
+      window.requestAnimationFrame(syncCanvasSize);
+    }
+  }, [open, syncCanvasSize, tab]);
+
   const resetPad = () => {
     draftStrokeRef.current = null;
     pointerIdRef.current = null;
@@ -275,6 +289,81 @@ const SignaturePadDialog = ({
     drawCanvas([]);
   };
 
+  const validateSignatureFile = (file: File) => {
+    if (!ACCEPTED_SIGNATURE_TYPES.has(file.type)) {
+      return "Signature must be a JPG, PNG, or WEBP image.";
+    }
+
+    if (file.size > MAX_SIGNATURE_SIZE_BYTES) {
+      return "Signature image must be 5 MB or smaller.";
+    }
+
+    return null;
+  };
+
+  const submitSignatureFile = async (file: File) => {
+    if (busy) {
+      return;
+    }
+
+    const validationError = validateSignatureFile(file);
+    if (validationError) {
+      setPadError(validationError);
+      return;
+    }
+
+    setSubmitting(true);
+    setPadError(null);
+    try {
+      const ok = await onUploadFile(file);
+      if (ok) {
+        setOpen(false);
+      }
+    } catch (saveError) {
+      setPadError(saveError instanceof Error ? saveError.message : "Could not save the signature.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+
+    await submitSignatureFile(file);
+  };
+
+  const handlePasteSignature = async (event: ReactClipboardEvent<HTMLDivElement>) => {
+    if (busy) {
+      return;
+    }
+
+    const items = Array.from(event.clipboardData.items);
+    const imageItem = items.find((item) => item.type.startsWith("image/"));
+    const pastedImage = imageItem?.getAsFile();
+
+    if (!pastedImage) {
+      setPadError("Clipboard does not contain an image. Copy a signature screenshot, then paste it here.");
+      return;
+    }
+
+    event.preventDefault();
+
+    const extension = pastedImage.type === "image/jpeg"
+      ? "jpg"
+      : pastedImage.type === "image/webp"
+        ? "webp"
+        : "png";
+    const file = new File([pastedImage], `student-signature-paste-${Date.now()}.${extension}`, {
+      type: pastedImage.type || "image/png",
+    });
+
+    await submitSignatureFile(file);
+  };
+
   const saveSignature = async () => {
     if (busy) {
       return;
@@ -317,9 +406,9 @@ const SignaturePadDialog = ({
     <>
       <MediaUploadCard
         title="Signature"
-        description="Draw the student's signature."
-        actionLabel="Draw Signature"
-        actionHint="Use the pad to draw and save a clean PNG."
+        description="Draw, upload, or paste the student's signature."
+        actionLabel="Add Signature"
+        actionHint="Draw a signature, upload an image, or paste a copied screenshot."
         previewUrl={previewUrl}
         fileName={fileName}
         uploading={uploading}
@@ -336,6 +425,7 @@ const SignaturePadDialog = ({
           setOpen(nextOpen);
           if (!nextOpen) {
             resetPad();
+            setTab("draw");
           }
         }}
       >
@@ -353,7 +443,7 @@ const SignaturePadDialog = ({
               </div>
             </div>
             <DialogDescription className="max-w-2xl">
-              Draw the student's signature in the pad, then save it as a clean PNG.
+              Draw the student's signature, upload a signature image, or paste a copied screenshot.
             </DialogDescription>
           </DialogHeader>
 
@@ -397,59 +487,145 @@ const SignaturePadDialog = ({
             </div>
 
             <div className="space-y-4">
-              <div
-                ref={frameRef}
-                className="relative h-[clamp(360px,44vh,560px)] overflow-hidden rounded-3xl border border-border bg-background shadow-sm"
-              >
-                <canvas
-                  ref={canvasRef}
-                  className={cn("h-full w-full touch-none cursor-crosshair")}
-                  aria-label="Signature drawing pad"
-                  onPointerDown={startStroke}
-                  onPointerMove={continueStroke}
-                  onPointerUp={finishStroke}
-                  onPointerCancel={finishStroke}
-                />
+              <Tabs value={tab} onValueChange={(value) => setTab(value as "draw" | "upload" | "paste")}>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="draw">Draw</TabsTrigger>
+                  <TabsTrigger value="upload">Upload</TabsTrigger>
+                  <TabsTrigger value="paste">Paste</TabsTrigger>
+                </TabsList>
 
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04),rgba(255,255,255,0)_35%,rgba(255,255,255,0.04))]" />
-                <div className="pointer-events-none absolute inset-x-4 bottom-4 rounded-2xl border border-dashed border-border/70 bg-background/70 px-4 py-2 text-xs text-muted-foreground backdrop-blur-sm">
-                  Draw inside the box. The saved file will be a clean PNG.
-                </div>
-              </div>
+                <TabsContent value="draw" className="space-y-4 pt-4">
+                  <div
+                    ref={frameRef}
+                    className="relative h-[clamp(360px,44vh,560px)] overflow-hidden rounded-3xl border border-border bg-background shadow-sm"
+                  >
+                    <canvas
+                      ref={canvasRef}
+                      className={cn("h-full w-full touch-none cursor-crosshair")}
+                      aria-label="Signature drawing pad"
+                      onPointerDown={startStroke}
+                      onPointerMove={continueStroke}
+                      onPointerUp={finishStroke}
+                      onPointerCancel={finishStroke}
+                    />
 
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04),rgba(255,255,255,0)_35%,rgba(255,255,255,0.04))]" />
+                    <div className="pointer-events-none absolute inset-x-4 bottom-4 rounded-2xl border border-dashed border-border/70 bg-background/70 px-4 py-2 text-xs text-muted-foreground backdrop-blur-sm">
+                      Draw inside the box. The saved file will be a clean PNG.
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      onClick={undoStroke}
+                      disabled={busy || isDrawing || strokes.length === 0}
+                    >
+                      <Undo2 className="h-4 w-4" />
+                      Undo
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      onClick={clearStroke}
+                      disabled={busy || (strokes.length === 0 && !isDrawing)}
+                    >
+                      <Eraser className="h-4 w-4" />
+                      Clear
+                    </Button>
+                    <Button
+                      type="button"
+                      className="w-full sm:ml-auto sm:w-auto"
+                      onClick={() => void saveSignature()}
+                      disabled={busy || strokes.length === 0 || isDrawing}
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      {submitting ? "Saving..." : "Save Signature"}
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="upload" className="space-y-4 pt-4">
+                  <div className="rounded-2xl border border-border bg-muted/20 p-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="student-signature-upload" className="text-sm font-medium text-foreground">
+                        Upload a signature image
+                      </Label>
+                      <p className="text-sm leading-6 text-muted-foreground">
+                        Accepted formats: JPG, PNG, or WEBP. Maximum file size: 5 MB.
+                      </p>
+                    </div>
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                      <Button type="button" className="w-full sm:w-auto" onClick={() => fileInputRef.current?.click()} disabled={busy}>
+                        <Upload className="h-4 w-4" />
+                        Choose File
+                      </Button>
+                      <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setTab("draw")} disabled={busy}>
+                        <Signature className="h-4 w-4" />
+                        Draw Instead
+                      </Button>
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                      Use a clear, handwritten signature image on a plain background.
+                    </p>
+                  </div>
+
+                  <Input
+                    ref={fileInputRef}
+                    id="student-signature-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(event) => {
+                      void handleFileSelect(event);
+                    }}
+                  />
+                </TabsContent>
+
+                <TabsContent value="paste" className="space-y-4 pt-4">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    className="flex min-h-[320px] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border bg-muted/20 px-6 py-10 text-center outline-none transition focus:border-primary focus:bg-primary/5"
+                    onPaste={(event) => {
+                      void handlePasteSignature(event);
+                    }}
+                  >
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-background text-primary shadow-sm">
+                      <Clipboard className="h-7 w-7" />
+                    </div>
+                    <h3 className="mt-4 text-lg font-semibold text-foreground">Paste a signature screenshot</h3>
+                    <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                      Click this area, then press Ctrl+V to paste a copied signature screenshot.
+                    </p>
+                    <div className="mt-5 flex flex-wrap justify-center gap-2">
+                      <Badge variant="outline" className="bg-background/70">
+                        Clipboard image
+                      </Badge>
+                      <Badge variant="outline" className="bg-background/70">
+                        JPG, PNG, WEBP
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setTab("upload")} disabled={busy}>
+                      <FileImage className="h-4 w-4" />
+                      Upload File Instead
+                    </Button>
+                    <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setTab("draw")} disabled={busy}>
+                      <Signature className="h-4 w-4" />
+                      Draw Instead
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              {submitting && <p className="text-sm font-medium text-primary">Saving signature...</p>}
               {padError && <p className="text-sm font-medium text-destructive">{padError}</p>}
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  onClick={undoStroke}
-                  disabled={busy || isDrawing || strokes.length === 0}
-                >
-                  <Undo2 className="h-4 w-4" />
-                  Undo
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  onClick={clearStroke}
-                  disabled={busy || (strokes.length === 0 && !isDrawing)}
-                >
-                  <Eraser className="h-4 w-4" />
-                  Clear
-                </Button>
-                <Button
-                  type="button"
-                  className="w-full sm:ml-auto sm:w-auto"
-                  onClick={() => void saveSignature()}
-                  disabled={busy || strokes.length === 0 || isDrawing}
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  {submitting ? "Saving..." : "Save Signature"}
-                </Button>
-              </div>
             </div>
           </div>
         </DialogContent>
