@@ -142,13 +142,26 @@ const restoreRegistrationDraftId = () => {
   }
 
   try {
-    const existing = window.sessionStorage.getItem(DRAFT_STORAGE_KEY);
+    const existing =
+      window.localStorage.getItem(DRAFT_STORAGE_KEY) ||
+      window.sessionStorage.getItem(DRAFT_STORAGE_KEY);
     if (existing) {
+      try {
+        window.localStorage.setItem(DRAFT_STORAGE_KEY, existing);
+        window.sessionStorage.setItem(DRAFT_STORAGE_KEY, existing);
+      } catch {
+        // Existing draft can still be used even if storage sync is blocked.
+      }
       return existing;
     }
 
     const next = createRegistrationDraftId();
-    window.sessionStorage.setItem(DRAFT_STORAGE_KEY, next);
+    try {
+      window.localStorage.setItem(DRAFT_STORAGE_KEY, next);
+      window.sessionStorage.setItem(DRAFT_STORAGE_KEY, next);
+    } catch {
+      // The generated draft id still works for this page session.
+    }
     return next;
   } catch {
     return createRegistrationDraftId();
@@ -160,7 +173,12 @@ const persistRegistrationDraftId = (draftId: string) => {
     return;
   }
 
-  window.sessionStorage.setItem(DRAFT_STORAGE_KEY, draftId);
+  try {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, draftId);
+    window.sessionStorage.setItem(DRAFT_STORAGE_KEY, draftId);
+  } catch {
+    // Draft persistence is helpful, but registration should continue if storage is blocked.
+  }
 };
 
 const getMediaPath = (draftId: string, kind: "student-photo" | "student-signature") =>
@@ -193,12 +211,19 @@ const restoreForm = (): RegistrationForm => {
   }
 
   try {
-    const raw = window.sessionStorage.getItem(FORM_STORAGE_KEY);
+    const raw =
+      window.localStorage.getItem(FORM_STORAGE_KEY) ||
+      window.sessionStorage.getItem(FORM_STORAGE_KEY);
     if (!raw) {
       return initialForm;
     }
 
     const parsed = JSON.parse(raw) as Partial<RegistrationForm> & { date_of_birth?: string | null };
+    try {
+      window.localStorage.setItem(FORM_STORAGE_KEY, raw);
+    } catch {
+      // Restored data can still populate the form even if migration fails.
+    }
     return {
       ...initialForm,
       ...parsed,
@@ -237,10 +262,17 @@ const persistForm = (form: RegistrationForm) => {
     return;
   }
 
-  window.sessionStorage.setItem(FORM_STORAGE_KEY, JSON.stringify({
+  const serialized = JSON.stringify({
     ...form,
     date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString() : null,
-  }));
+  });
+
+  try {
+    window.localStorage.setItem(FORM_STORAGE_KEY, serialized);
+    window.sessionStorage.setItem(FORM_STORAGE_KEY, serialized);
+  } catch {
+    // Keep the form usable even when browser storage is unavailable.
+  }
 };
 
 const persistVerificationInfo = (verificationInfo: VerificationInfo | null) => {
@@ -261,9 +293,15 @@ const clearStoredRegistrationState = () => {
     return;
   }
 
-  window.sessionStorage.removeItem(FORM_STORAGE_KEY);
-  window.sessionStorage.removeItem(VERIFICATION_STORAGE_KEY);
-  window.sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+  try {
+    window.sessionStorage.removeItem(FORM_STORAGE_KEY);
+    window.sessionStorage.removeItem(VERIFICATION_STORAGE_KEY);
+    window.sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+    window.localStorage.removeItem(FORM_STORAGE_KEY);
+    window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch {
+    // Nothing else to do if browser storage cleanup is unavailable.
+  }
 };
 
 const buildSubmissionPayloads = ({
