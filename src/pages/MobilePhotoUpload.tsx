@@ -19,6 +19,7 @@ import { validateStudentPhoto } from "@/lib/photoValidation";
 const MobilePhotoUpload = () => {
   const [searchParams] = useSearchParams();
   const draftId = searchParams.get("draft") ?? "";
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedPreviewUrl, setSelectedPreviewUrl] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
@@ -140,9 +141,9 @@ const MobilePhotoUpload = () => {
                     <Camera className="h-8 w-8" />
                   </div>
                   <div className="space-y-1">
-                    <p className="font-semibold text-foreground">Take or choose a clear photo</p>
+                    <p className="font-semibold text-foreground">Take a new photo or upload one</p>
                     <p className="text-sm leading-6 text-muted-foreground">
-                      The photo will be checked, cleaned to a white background, and sent back to the open registration form.
+                      Choose how to send the student photo. It will be checked, cleaned to a white background, and sent back to the open registration form.
                     </p>
                   </div>
                 </div>
@@ -187,8 +188,8 @@ const MobilePhotoUpload = () => {
               Student photo
             </Label>
             <Input
-              ref={fileInputRef}
-              id="mobile-student-photo"
+              ref={cameraInputRef}
+              id="mobile-student-photo-camera"
               type="file"
               accept="image/jpeg,image/png,image/webp"
               capture="user"
@@ -197,16 +198,42 @@ const MobilePhotoUpload = () => {
                 void handleFileSelect(event);
               }}
             />
-            <Button
-              type="button"
-              size="lg"
-              className="h-12 w-full text-base font-semibold"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={submitting}
-            >
-              <Upload className="h-4 w-4" />
-              {uploaded ? "Send Another Photo" : "Take Or Choose Photo"}
-            </Button>
+            <Input
+              ref={fileInputRef}
+              id="mobile-student-photo-file"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(event) => {
+                void handleFileSelect(event);
+              }}
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button
+                type="button"
+                size="lg"
+                className="h-12 w-full text-base font-semibold"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={submitting}
+              >
+                <Camera className="h-4 w-4" />
+                {uploaded ? "Take Another Photo" : "Take Photo"}
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                className="h-12 w-full text-base font-semibold"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={submitting}
+              >
+                <Upload className="h-4 w-4" />
+                {uploaded ? "Upload Another File" : "Upload File"}
+              </Button>
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Take Photo opens the camera. Upload File lets you choose an existing JPG, PNG, or WEBP from this device.
+            </p>
           </div>
 
           <p className="text-center text-xs leading-5 text-muted-foreground">
