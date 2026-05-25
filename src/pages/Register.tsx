@@ -1273,13 +1273,13 @@ const Register = () => {
           </FormSection>
 
           <FormSection
-            title="Current Education"
-            description="This section is for the student's current education level and LRN."
+            title="Enrollment Selection"
+            description="Select the education level, program, and level the student will enroll in."
             icon={<School className="h-4 w-4" />}
           >
             <div className="form-grid">
               <SelectField
-                label="Education Level"
+                label="Education Level to Enroll"
                 name="education_level"
                 required
                 options={educationLevelOptions}
