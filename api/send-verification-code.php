@@ -32,6 +32,15 @@ $ttlMinutes = max(1, (int) env_value('MAIL_CODE_TTL_MINUTES', '10'));
 $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 $expiresAt = gmdate('c', time() + ($ttlMinutes * 60));
 
+supabase_update('registration_verifications', [
+    'email' => 'eq.' . $email,
+    'used_at' => 'is.null',
+    'verified_at' => 'is.null',
+    'expires_at' => 'gt.' . gmdate('c'),
+], [
+    'expires_at' => gmdate('c'),
+]);
+
 $record = [
     'email' => $email,
     'payload' => $payload,

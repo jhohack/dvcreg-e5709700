@@ -42,6 +42,14 @@ Deno.serve(async (request) => {
       return errorResponse("A registration with the same first name, middle name, and last name already exists.", 409)
     }
 
+    await client
+      .from("registration_verifications")
+      .update({ expires_at: new Date().toISOString() })
+      .eq("email", email)
+      .is("used_at", null)
+      .is("verified_at", null)
+      .gt("expires_at", new Date().toISOString())
+
     const { data: created, error } = await client
       .from("registration_verifications")
       .insert({
