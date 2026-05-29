@@ -39,7 +39,37 @@ if ($attemptCount >= 5) {
 }
 
 $codeHash = (string) ($record['code_hash'] ?? '');
-if ($codeHash === '' || !password_verify($code, $codeHash)) {
+$isValidCode = $codeHash !== '' && password_verify($code, $codeHash);
+
+if (!$isValidCode) {
+    $activeRequestsResponse = supabase_request('GET', 'registration_verifications', [
+        'email' => 'eq.' . (string) ($record['email'] ?? ''),
+        'used_at' => 'is.null',
+        'verified_at' => 'is.null',
+        'expires_at' => 'gt.' . gmdate('c'),
+        'order' => 'created_at.desc',
+        'limit' => '10',
+    ]);
+
+    if ($activeRequestsResponse['status'] < 200 || $activeRequestsResponse['status'] >= 300 || !is_array($activeRequestsResponse['body'])) {
+        error_response('Verification service error. Please try again in a moment.', 500);
+    }
+
+    foreach ($activeRequestsResponse['body'] as $activeRequest) {
+        if (!is_array($activeRequest) || ($activeRequest['id'] ?? null) === ($record['id'] ?? null)) {
+            continue;
+        }
+
+        $activeCodeHash = (string) ($activeRequest['code_hash'] ?? '');
+        if ($activeCodeHash !== '' && password_verify($code, $activeCodeHash)) {
+            $record = $activeRequest;
+            $isValidCode = true;
+            break;
+        }
+    }
+}
+
+if (!$isValidCode) {
     supabase_update('registration_verifications', ['id' => 'eq.' . $verificationId], [
         'attempt_count' => $attemptCount + 1,
     ]);

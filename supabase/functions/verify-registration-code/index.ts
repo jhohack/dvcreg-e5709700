@@ -38,7 +38,7 @@ Deno.serve(async (request) => {
     }
 
     const client = createServiceRoleClient()
-    const { data: record, error } = await client
+    const { data: storedRecord, error } = await client
       .from("registration_verifications")
       .select("*")
       .eq("id", verificationId)
@@ -48,9 +48,11 @@ Deno.serve(async (request) => {
       return errorResponse("Verification service error. Please try again in a moment.", 500)
     }
 
-    if (!record) {
+    if (!storedRecord) {
       return errorResponse("Verification request not found. Please request a new code.", 404)
     }
+
+    let record = storedRecord
 
     if (record.used_at || record.verified_at) {
       if (await admissionExists(client, verificationId)) {
@@ -71,7 +73,36 @@ Deno.serve(async (request) => {
     }
 
     const codeHash = String(record.code_hash ?? "")
-    const isValidCode = codeHash !== "" && await verifyStoredVerificationCode(code, codeHash)
+    let isValidCode = codeHash !== "" && await verifyStoredVerificationCode(code, codeHash)
+
+    if (!isValidCode) {
+      const { data: activeRequests, error: activeRequestsError } = await client
+        .from("registration_verifications")
+        .select("*")
+        .eq("email", String(record.email ?? ""))
+        .is("used_at", null)
+        .is("verified_at", null)
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(10)
+
+      if (activeRequestsError) {
+        return errorResponse("Verification service error. Please try again in a moment.", 500)
+      }
+
+      for (const activeRequest of activeRequests ?? []) {
+        if (activeRequest.id === record.id) {
+          continue
+        }
+
+        const activeCodeHash = String(activeRequest.code_hash ?? "")
+        if (activeCodeHash !== "" && await verifyStoredVerificationCode(code, activeCodeHash)) {
+          record = activeRequest
+          isValidCode = true
+          break
+        }
+      }
+    }
 
     if (!isValidCode) {
       const { error: updateError } = await client
