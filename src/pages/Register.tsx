@@ -75,6 +75,7 @@ const verificationFunctionByPath: Record<string, string> = {
   "send-verification-code.php": "send-verification-code",
   "verify-registration-code.php": "verify-registration-code",
 };
+const verificationApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
 
 const initialForm = {
   first_name: "", last_name: "", middle_name: "",
@@ -426,7 +427,34 @@ const postJsonToEdgeFunction = async <T,>(path: string, body: unknown): Promise<
   return data as T;
 };
 
+const postJsonToPhpApi = async <T,>(path: string, body: unknown): Promise<T> => {
+  let response: Response;
+
+  try {
+    response = await fetch(`${verificationApiBase}/${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(verificationServiceUnavailableMessage);
+  }
+
+  const responseData = await response.json().catch(() => null);
+  if (!response.ok || !responseData?.ok) {
+    throw new Error(responseData?.message || "Request failed.");
+  }
+
+  return responseData as T;
+};
+
 const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
+  if (verificationApiBase) {
+    return await postJsonToPhpApi<T>(path, body);
+  }
+
   if (verificationFunctionByPath[path]) {
     return await postJsonToEdgeFunction<T>(path, body);
   }
