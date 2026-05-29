@@ -52,34 +52,35 @@ Deno.serve(async (request) => {
       return errorResponse("Verification request not found. Please request a new code.", 404)
     }
 
-    let record = storedRecord
-
-    if (record.used_at || record.verified_at) {
+    if (storedRecord.used_at || storedRecord.verified_at) {
       if (await admissionExists(client, verificationId)) {
         return jsonResponse({ ok: true, alreadyVerified: true })
       }
-
-      return errorResponse("This verification code has already been used.", 409)
     }
 
-    const expiresAt = Date.parse(String(record.expires_at ?? ""))
-    if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
-      return errorResponse("This verification code has expired. Please request a new one.", 410)
+    const isUsableRequest = (requestRecord: typeof storedRecord): boolean => {
+      if (requestRecord.used_at || requestRecord.verified_at) {
+        return false
+      }
+
+      const candidateExpiresAt = Date.parse(String(requestRecord.expires_at ?? ""))
+      if (!Number.isFinite(candidateExpiresAt) || candidateExpiresAt < Date.now()) {
+        return false
+      }
+
+      return Number.parseInt(String(requestRecord.attempt_count ?? 0), 10) < 5
     }
 
-    const attemptCount = Number.parseInt(String(record.attempt_count ?? 0), 10)
-    if (attemptCount >= 5) {
-      return errorResponse("Too many incorrect attempts. Please request a new code.", 429)
-    }
+    const storedCodeHash = String(storedRecord.code_hash ?? "")
+    let record = isUsableRequest(storedRecord) && storedCodeHash !== "" && await verifyStoredVerificationCode(code, storedCodeHash)
+      ? storedRecord
+      : null
 
-    const codeHash = String(record.code_hash ?? "")
-    let isValidCode = codeHash !== "" && await verifyStoredVerificationCode(code, codeHash)
-
-    if (!isValidCode) {
+    if (!record) {
       const { data: activeRequests, error: activeRequestsError } = await client
         .from("registration_verifications")
         .select("*")
-        .eq("email", String(record.email ?? ""))
+        .eq("email", String(storedRecord.email ?? ""))
         .is("used_at", null)
         .is("verified_at", null)
         .gt("expires_at", new Date().toISOString())
@@ -91,20 +92,33 @@ Deno.serve(async (request) => {
       }
 
       for (const activeRequest of activeRequests ?? []) {
-        if (activeRequest.id === record.id) {
+        if (activeRequest.id === storedRecord.id || !isUsableRequest(activeRequest)) {
           continue
         }
 
         const activeCodeHash = String(activeRequest.code_hash ?? "")
         if (activeCodeHash !== "" && await verifyStoredVerificationCode(code, activeCodeHash)) {
           record = activeRequest
-          isValidCode = true
           break
         }
       }
     }
 
-    if (!isValidCode) {
+    if (!record) {
+      if (storedRecord.used_at || storedRecord.verified_at) {
+        return errorResponse("This verification code has already been used.", 409)
+      }
+
+      const expiresAt = Date.parse(String(storedRecord.expires_at ?? ""))
+      if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
+        return errorResponse("This verification code has expired. Please request a new one.", 410)
+      }
+
+      const attemptCount = Number.parseInt(String(storedRecord.attempt_count ?? 0), 10)
+      if (attemptCount >= 5) {
+        return errorResponse("Too many incorrect attempts. Please request a new code.", 429)
+      }
+
       const { error: updateError } = await client
         .from("registration_verifications")
         .update({
@@ -133,7 +147,7 @@ Deno.serve(async (request) => {
 
     await insertAdmissionPayloads(
       client,
-      verificationId,
+      record.id,
       payload as Record<string, unknown>,
       legacyPayload as Record<string, unknown>,
     )
@@ -145,7 +159,7 @@ Deno.serve(async (request) => {
         verified_at: stamp,
         used_at: stamp,
       })
-      .eq("id", verificationId)
+      .eq("id", record.id)
 
     return jsonResponse({
       ok: true,
