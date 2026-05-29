@@ -1,6 +1,7 @@
 import { errorResponse, jsonInput, jsonResponse, corsHeaders } from "../_shared/http.ts"
 import { intEnv } from "../_shared/env.ts"
 import {
+  admissionFullNameExists,
   createServiceRoleClient,
   generateVerificationCode,
   hashVerificationCode,
@@ -36,6 +37,10 @@ Deno.serve(async (request) => {
     const verificationCode = generateVerificationCode()
     const expiresAt = new Date(Date.now() + ttlMinutes * 60_000).toISOString()
     const client = createServiceRoleClient()
+
+    if (await admissionFullNameExists(client, payload as Record<string, unknown>)) {
+      return errorResponse("A registration with the same first name, middle name, and last name already exists.", 409)
+    }
 
     const { data: created, error } = await client
       .from("registration_verifications")

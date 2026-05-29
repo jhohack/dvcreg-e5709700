@@ -120,6 +120,10 @@ Deno.serve(async (request) => {
       ok: true,
     })
   } catch (error) {
+    if (error instanceof Error && error.message === "This full name is already registered.") {
+      return errorResponse(error.message, 409)
+    }
+
     return errorResponse(
       error instanceof Error ? error.message : "Verification service error. Please try again in a moment.",
       500,

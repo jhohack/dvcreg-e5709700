@@ -118,6 +118,10 @@ type SendCodeResponse = {
   message?: string;
 };
 
+type DuplicateNameResponse = {
+  exists: boolean;
+};
+
 type VerifyCodeResponse = {
   ok: boolean;
   alreadyVerified?: boolean;
@@ -128,6 +132,7 @@ const MEDIA_BUCKET = "registration-media";
 const DRAFT_STORAGE_KEY = "dvcreg-registration-draft-id";
 const ACCEPTED_MEDIA_TYPES = ACCEPTED_PHOTO_TYPES;
 const MAX_MEDIA_SIZE_BYTES = MAX_PHOTO_SIZE_BYTES;
+const MIN_STUDENT_AGE = 15;
 
 const createRegistrationDraftId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -251,6 +256,24 @@ const restoreVerificationInfo = (): VerificationInfo | null => {
   }
 };
 
+const formatLocalDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const calculateAge = (birthdate: Date, today = new Date()) => {
+  let age = today.getFullYear() - birthdate.getFullYear();
+  const monthDelta = today.getMonth() - birthdate.getMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < birthdate.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+const isValidStudentAge = (birthdate: Date) => calculateAge(birthdate) >= MIN_STUDENT_AGE;
+
 const persistForm = (form: RegistrationForm) => {
   if (typeof window === "undefined") {
     return;
@@ -335,7 +358,7 @@ const buildSubmissionPayloads = ({
 
   const legacyPayload: TablesInsert<"admission"> = {
     ...legacyRest,
-    date_of_birth: form.date_of_birth ? form.date_of_birth.toISOString().split("T")[0] : null,
+    date_of_birth: form.date_of_birth ? formatLocalDate(form.date_of_birth) : null,
     age: form.age ? parseInt(form.age, 10) : null,
     monthly_income: form.monthly_income ? parseInt(form.monthly_income.replace(/,/g, ""), 10) : null,
     facebook_link: normalizeFacebookLink(form.facebook_link) || form.facebook_link.trim() || null,
@@ -428,11 +451,68 @@ const Register = () => {
   const [signatureUploading, setSignatureUploading] = useState(false);
   const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
   const [signatureUploadError, setSignatureUploadError] = useState<string | null>(null);
+  const [dateOfBirthError, setDateOfBirthError] = useState<string | null>(null);
+  const [debouncedNameCheck, setDebouncedNameCheck] = useState({
+    firstName: "",
+    middleName: "",
+    lastName: "",
+    dateOfBirth: "",
+  });
   const academicCatalogQuery = useQuery({
     queryKey: ["academic-catalog"],
     queryFn: fetchAcademicCatalog,
     staleTime: 1000 * 60 * 10,
   });
+  const nameCheckInput = {
+    firstName: form.first_name.trim(),
+    middleName: form.middle_name.trim(),
+    lastName: form.last_name.trim(),
+    dateOfBirth: form.date_of_birth ? formatLocalDate(form.date_of_birth) : "",
+  };
+  const hasFullNameForCheck = Boolean(nameCheckInput.firstName && nameCheckInput.middleName && nameCheckInput.lastName && nameCheckInput.dateOfBirth);
+  const checkDuplicateName = async (): Promise<DuplicateNameResponse> => {
+    const rpcClient = supabase as unknown as {
+      rpc: (
+        functionName: "registration_full_name_exists",
+        args: { p_first_name: string; p_middle_name: string; p_last_name: string; p_date_of_birth: string },
+      ) => Promise<{ data: boolean | null; error: Error | null }>;
+    };
+    const { data, error } = await rpcClient.rpc("registration_full_name_exists", {
+      p_first_name: debouncedNameCheck.firstName,
+      p_middle_name: debouncedNameCheck.middleName,
+      p_last_name: debouncedNameCheck.lastName,
+      p_date_of_birth: debouncedNameCheck.dateOfBirth,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return { exists: data === true };
+  };
+  const duplicateNameQuery = useQuery({
+    queryKey: ["duplicate-registration-name", debouncedNameCheck],
+    queryFn: checkDuplicateName,
+    enabled: Boolean(debouncedNameCheck.firstName && debouncedNameCheck.middleName && debouncedNameCheck.lastName && debouncedNameCheck.dateOfBirth),
+    retry: false,
+    staleTime: 1000 * 30,
+  });
+  const nameCheckMatchesCurrentInput = hasFullNameForCheck
+    && debouncedNameCheck.firstName === nameCheckInput.firstName
+    && debouncedNameCheck.middleName === nameCheckInput.middleName
+    && debouncedNameCheck.lastName === nameCheckInput.lastName
+    && debouncedNameCheck.dateOfBirth === nameCheckInput.dateOfBirth;
+  const duplicateNameExists = nameCheckMatchesCurrentInput && duplicateNameQuery.data?.exists === true;
+  const duplicateNameChecking = hasFullNameForCheck && (!nameCheckMatchesCurrentInput || duplicateNameQuery.isFetching);
+
+  useEffect(() => {
+    if (!hasFullNameForCheck) {
+      setDebouncedNameCheck({ firstName: "", middleName: "", lastName: "", dateOfBirth: "" });
+      return;
+    }
+
+    setDebouncedNameCheck(nameCheckInput);
+  }, [hasFullNameForCheck, nameCheckInput.firstName, nameCheckInput.middleName, nameCheckInput.lastName, nameCheckInput.dateOfBirth]);
 
   useEffect(() => {
     if (!submitted) {
@@ -470,12 +550,21 @@ const Register = () => {
     setForm((prev) => ({ ...prev, [name]: val }));
   const setDate = (name: keyof RegistrationForm) => (val: Date | undefined) => {
     if (name === "date_of_birth" && val) {
-      const today = new Date();
-      let age = today.getFullYear() - val.getFullYear();
-      const monthDelta = today.getMonth() - val.getMonth();
-      if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < val.getDate())) age--;
+      const age = calculateAge(val);
+      if (age < MIN_STUDENT_AGE) {
+        const message = `Student must be at least ${MIN_STUDENT_AGE} years old.`;
+        setDateOfBirthError(message);
+        toast.error(message);
+        setForm((prev) => ({ ...prev, [name]: undefined, age: "" }));
+        return;
+      }
+
+      setDateOfBirthError(null);
       setForm((prev) => ({ ...prev, [name]: val, age: String(Math.max(0, age)) }));
     } else {
+      if (name === "date_of_birth") {
+        setDateOfBirthError(null);
+      }
       setForm((prev) => ({ ...prev, [name]: val }));
     }
   };
@@ -770,8 +859,23 @@ const Register = () => {
       return false;
     }
 
-    if (!form.first_name || !form.last_name || !form.gender || !selectedEducationLevel || !form.program || !form.level || !form.email) {
+    if (!form.first_name || !form.middle_name || !form.last_name || !form.date_of_birth || !form.gender || !selectedEducationLevel || !form.program || !form.level || !form.email) {
       toast.error("Please fill in all required fields.");
+      return false;
+    }
+
+    if (!isValidStudentAge(form.date_of_birth)) {
+      toast.error(`Student must be at least ${MIN_STUDENT_AGE} years old.`);
+      return false;
+    }
+
+    if (duplicateNameChecking) {
+      toast.error("Please wait while we check the student's full name.");
+      return false;
+    }
+
+    if (duplicateNameExists) {
+      toast.error("This full name is already registered.");
       return false;
     }
 
@@ -1104,6 +1208,11 @@ const Register = () => {
               <DateField label="Date of Birth" name="date_of_birth" required value={form.date_of_birth} onChange={setDate("date_of_birth")} />
               <TextField label="Age" name="age" type="number" required value={form.age} onChange={set("age")} />
               <TextField label="Place of Birth" name="place_of_birth" required value={form.place_of_birth} onChange={set("place_of_birth")} />
+              {(dateOfBirthError || duplicateNameExists) && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive sm:col-span-2 lg:col-span-3">
+                  {dateOfBirthError || "This full name is already registered."}
+                </div>
+              )}
               <SelectField label="Gender" name="gender" required options={genderOptions} value={form.gender} onChange={set("gender")} />
               <SelectField label="Civil Status" name="civil_status" required options={civilStatusOptions} value={form.civil_status} onChange={set("civil_status")} />
               {showSpouse && (
@@ -1403,7 +1512,7 @@ const Register = () => {
             <Button
               type="submit"
               size="lg"
-              disabled={sendingCode || mediaIsUploading}
+              disabled={sendingCode || mediaIsUploading || duplicateNameChecking || duplicateNameExists}
               className="h-12 min-w-[240px] text-base font-semibold"
             >
               {sendingCode ? "Sending Code..." : "Send Verification Code"}

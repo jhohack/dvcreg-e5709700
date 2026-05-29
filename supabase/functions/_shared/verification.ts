@@ -70,6 +70,67 @@ export async function admissionExists(client: ReturnType<typeof createServiceRol
   return Boolean(data)
 }
 
+function normalizeNamePart(value: unknown): string {
+  return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase()
+}
+
+function normalizeMiddleNamePart(value: unknown): string {
+  return normalizeNamePart(value).replaceAll(".", "")
+}
+
+function middleNameMatches(storedMiddleName: string, inputMiddleName: string): boolean {
+  return storedMiddleName === inputMiddleName ||
+    (storedMiddleName.length === 1 && inputMiddleName.startsWith(storedMiddleName)) ||
+    (inputMiddleName.length === 1 && storedMiddleName.startsWith(inputMiddleName))
+}
+
+function normalizeBirthdate(value: unknown): string {
+  const raw = String(value ?? "").trim()
+  if (!raw) {
+    return ""
+  }
+
+  const timestamp = Date.parse(raw)
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString().slice(0, 10) : raw
+}
+
+export async function admissionFullNameExists(
+  client: ReturnType<typeof createServiceRoleClient>,
+  payload: Record<string, unknown>,
+): Promise<boolean> {
+  const firstName = normalizeNamePart(payload.first_name)
+  const middleName = normalizeMiddleNamePart(payload.middle_name)
+  const lastName = normalizeNamePart(payload.last_name)
+  const birthdate = normalizeBirthdate(payload.date_of_birth)
+
+  if (!firstName || !middleName || !lastName || !birthdate) {
+    return false
+  }
+
+  const fullNameExistsInTable = async (table: "admission" | "student_information") => {
+    const { data, error } = await client
+      .from(table)
+      .select("id, first_name, middle_name, last_name, date_of_birth")
+      .ilike("first_name", firstName)
+      .ilike("last_name", lastName)
+      .eq("date_of_birth", birthdate)
+      .limit(25)
+
+    if (error) {
+      throw new Error("Could not check for an existing registration. Please try again.")
+    }
+
+    return (data ?? []).some((row) =>
+      normalizeNamePart(row.first_name) === firstName &&
+      middleNameMatches(normalizeMiddleNamePart(row.middle_name), middleName) &&
+      normalizeNamePart(row.last_name) === lastName &&
+      normalizeBirthdate(row.date_of_birth) === birthdate
+    )
+  }
+
+  return await fullNameExistsInTable("admission") || await fullNameExistsInTable("student_information")
+}
+
 function isMissingAcademicColumnsError(message: string): boolean {
   return message.includes("column admission.education_level does not exist")
     || message.includes("column admission.program does not exist")
@@ -91,6 +152,10 @@ function isMissingAcademicColumnsError(message: string): boolean {
     || message.includes("could not find the 'signature_media_id' column")
 }
 
+function isDuplicateFullNameError(error: { code?: string; message?: string }): boolean {
+  return error.code === "23505" && (error.message ?? "").includes("admission_unique_normalized_full_name_idx")
+}
+
 export async function insertAdmissionPayloads(
   client: ReturnType<typeof createServiceRoleClient>,
   id: string,
@@ -99,6 +164,10 @@ export async function insertAdmissionPayloads(
 ): Promise<void> {
   const primaryPayload = { ...payload, id }
   const fallbackPayload = { ...legacyPayload, id }
+
+  if (await admissionFullNameExists(client, primaryPayload)) {
+    throw new Error("This full name is already registered.")
+  }
 
   const primaryInsert = await client
     .from("admission")
@@ -114,6 +183,10 @@ export async function insertAdmissionPayloads(
     return
   }
 
+  if (isDuplicateFullNameError(primaryInsert.error)) {
+    throw new Error("This full name is already registered.")
+  }
+
   if (isMissingAcademicColumnsError(primaryInsert.error.message)) {
     const fallbackInsert = await client
       .from("admission")
@@ -127,6 +200,10 @@ export async function insertAdmissionPayloads(
 
     if ((fallbackInsert.status === 409 || fallbackInsert.error.code === "23505") && await admissionExists(client, id)) {
       return
+    }
+
+    if (isDuplicateFullNameError(fallbackInsert.error)) {
+      throw new Error("This full name is already registered.")
     }
   }
 

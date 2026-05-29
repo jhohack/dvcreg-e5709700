@@ -358,6 +358,93 @@ function admission_exists(string $id): bool
     return supabase_select_one('admission', ['id' => 'eq.' . $id], 'id') !== null;
 }
 
+function normalize_name_part(mixed $value): string
+{
+    $normalized = preg_replace('/\s+/', ' ', trim((string) $value));
+    return strtolower($normalized ?? '');
+}
+
+function normalize_middle_name_part(mixed $value): string
+{
+    return str_replace('.', '', normalize_name_part($value));
+}
+
+function middle_name_matches(string $storedMiddleName, string $inputMiddleName): bool
+{
+    if ($storedMiddleName === $inputMiddleName) {
+        return true;
+    }
+
+    if (strlen($storedMiddleName) === 1 && str_starts_with($inputMiddleName, $storedMiddleName)) {
+        return true;
+    }
+
+    return strlen($inputMiddleName) === 1 && str_starts_with($storedMiddleName, $inputMiddleName);
+}
+
+function normalize_birthdate(mixed $value): string
+{
+    $raw = trim((string) $value);
+    if ($raw === '') {
+        return '';
+    }
+
+    $timestamp = strtotime($raw);
+    return $timestamp === false ? $raw : gmdate('Y-m-d', $timestamp);
+}
+
+function duplicate_registration_exists_in_table(string $table, string $firstName, string $middleName, string $lastName, string $birthdate): bool
+{
+    $response = supabase_request('GET', $table, [
+        'select' => 'id,first_name,middle_name,last_name,date_of_birth',
+        'first_name' => 'ilike.' . $firstName,
+        'last_name' => 'ilike.' . $lastName,
+        'date_of_birth' => 'eq.' . $birthdate,
+        'limit' => '25',
+    ]);
+
+    if ($response['status'] < 200 || $response['status'] >= 300 || !is_array($response['body'])) {
+        error_response('Could not check for an existing registration. Please try again.', 500);
+    }
+
+    foreach ($response['body'] as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+
+        if (
+            normalize_name_part($row['first_name'] ?? '') === $firstName
+            && middle_name_matches(normalize_middle_name_part($row['middle_name'] ?? ''), $middleName)
+            && normalize_name_part($row['last_name'] ?? '') === $lastName
+            && normalize_birthdate($row['date_of_birth'] ?? '') === $birthdate
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function admission_full_name_exists(array $payload): bool
+{
+    $firstName = normalize_name_part($payload['first_name'] ?? '');
+    $middleName = normalize_middle_name_part($payload['middle_name'] ?? '');
+    $lastName = normalize_name_part($payload['last_name'] ?? '');
+    $birthdate = normalize_birthdate($payload['date_of_birth'] ?? '');
+
+    if ($firstName === '' || $middleName === '' || $lastName === '' || $birthdate === '') {
+        return false;
+    }
+
+    foreach (['admission', 'student_information'] as $table) {
+        if (duplicate_registration_exists_in_table($table, $firstName, $middleName, $lastName, $birthdate)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function is_missing_academic_columns_error(array|string|null $body): bool
 {
     if (!is_array($body)) {
@@ -381,10 +468,24 @@ function is_missing_academic_columns_error(array|string|null $body): bool
         || str_contains($message, "could not find the 'signature_file_name' column");
 }
 
+function is_duplicate_full_name_error(array|string|null $body): bool
+{
+    if (!is_array($body)) {
+        return false;
+    }
+
+    return ($body['code'] ?? '') === '23505'
+        && str_contains((string) ($body['message'] ?? ''), 'admission_unique_normalized_full_name_idx');
+}
+
 function insert_admission_payloads(string $id, array $payload, array $legacyPayload): void
 {
     $payload['id'] = $id;
     $legacyPayload['id'] = $id;
+
+    if (admission_full_name_exists($payload)) {
+        error_response('This full name is already registered.', 409);
+    }
 
     $response = supabase_insert('admission', $payload);
     if ($response['status'] >= 200 && $response['status'] < 300) {
@@ -395,10 +496,18 @@ function insert_admission_payloads(string $id, array $payload, array $legacyPayl
         return;
     }
 
+    if ($response['status'] === 409 && is_duplicate_full_name_error($response['body'])) {
+        error_response('This full name is already registered.', 409);
+    }
+
     if (is_missing_academic_columns_error($response['body'])) {
         $fallback = supabase_insert('admission', $legacyPayload);
         if (($fallback['status'] >= 200 && $fallback['status'] < 300) || ($fallback['status'] === 409 && admission_exists($id))) {
             return;
+        }
+
+        if ($fallback['status'] === 409 && is_duplicate_full_name_error($fallback['body'])) {
+            error_response('This full name is already registered.', 409);
         }
 
         error_response('Verification succeeded, but saving the registration failed.', 500);

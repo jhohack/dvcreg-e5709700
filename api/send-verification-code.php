@@ -20,6 +20,10 @@ if (!is_array($payload) || !is_array($legacyPayload)) {
     error_response('Missing registration payload.', 422);
 }
 
+if (admission_full_name_exists($payload)) {
+    error_response('A registration with the same first name, middle name, and last name already exists.', 409);
+}
+
 unset($payload['id'], $legacyPayload['id']);
 $payload['email'] = $email;
 $legacyPayload['email'] = $email;
