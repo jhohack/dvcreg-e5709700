@@ -699,6 +699,14 @@ function encode_mail_body(string $body): string
     return rtrim(chunk_split(base64_encode(normalize_mail_body($body)), 76, "\r\n"));
 }
 
+function smtp_message_id(string $fromAddress): string
+{
+    $domain = substr(strrchr($fromAddress, '@') ?: '', 1);
+    $host = $domain !== '' ? $domain : smtp_client_hostname();
+
+    return sprintf('<%s.%s@%s>', gmdate('YmdHis'), bin2hex(random_bytes(12)), $host);
+}
+
 function smtp_build_message(
     string $fromAddress,
     string $fromName,
@@ -711,6 +719,7 @@ function smtp_build_message(
 
     $headers = [
         'Date: ' . gmdate('D, d M Y H:i:s O'),
+        'Message-ID: ' . smtp_message_id($fromAddress),
         'From: ' . format_email_address($fromAddress, $fromName),
         'To: ' . format_email_address($recipientEmail),
         'Subject: ' . encode_mail_header($subject),
