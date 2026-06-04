@@ -15,6 +15,7 @@ vendor/
 composer.phar
 .env.local
 deployment/out/
+supabase/.temp/
 
 # Editor directories and files
 .vscode/*
