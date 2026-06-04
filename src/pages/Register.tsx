@@ -134,6 +134,7 @@ const DRAFT_STORAGE_KEY = "dvcreg-registration-draft-id";
 const ACCEPTED_MEDIA_TYPES = ACCEPTED_PHOTO_TYPES;
 const MAX_MEDIA_SIZE_BYTES = MAX_PHOTO_SIZE_BYTES;
 const MIN_STUDENT_AGE = 15;
+const MIDDLE_NAME_INITIAL_ERROR = "Middle name must be a full word, not a single letter or initial.";
 
 const createRegistrationDraftId = () => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -537,6 +538,9 @@ const Register = () => {
     && debouncedNameCheck.dateOfBirth === nameCheckInput.dateOfBirth;
   const duplicateNameExists = nameCheckMatchesCurrentInput && duplicateNameQuery.data?.exists === true;
   const duplicateNameChecking = hasFullNameForCheck && (!nameCheckMatchesCurrentInput || duplicateNameQuery.isFetching);
+  const middleNameError = form.middle_name.trim() && !hasFullNameWord(form.middle_name)
+    ? MIDDLE_NAME_INITIAL_ERROR
+    : "";
 
   useEffect(() => {
     if (!hasFullNameForCheck) {
@@ -897,8 +901,8 @@ const Register = () => {
       return false;
     }
 
-    if (!hasFullNameWord(form.middle_name)) {
-      toast.error("Middle name must be a full word, not a single letter or initial.");
+    if (middleNameError) {
+      toast.error(middleNameError);
       return false;
     }
 
@@ -1241,7 +1245,7 @@ const Register = () => {
           <FormSection title="Basic Information" description="Personal details of the student" icon={<User className="h-4 w-4" />}>
             <div className="form-grid">
               <TextField label="First Name" name="first_name" required value={form.first_name} onChange={set("first_name")} />
-              <TextField label="Middle Name" name="middle_name" required value={form.middle_name} onChange={set("middle_name")} />
+              <TextField label="Middle Name" name="middle_name" required value={form.middle_name} onChange={set("middle_name")} error={middleNameError} />
               <TextField label="Last Name" name="last_name" required value={form.last_name} onChange={set("last_name")} />
               <DateField label="Date of Birth" name="date_of_birth" required value={form.date_of_birth} onChange={setDate("date_of_birth")} />
               <TextField label="Age" name="age" type="number" required value={form.age} onChange={set("age")} />

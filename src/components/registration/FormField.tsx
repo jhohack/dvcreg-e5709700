@@ -27,6 +27,7 @@ interface TextFieldProps extends BaseProps {
   onChange: (val: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  error?: string;
 }
 
 interface SelectFieldProps extends BaseProps {
@@ -42,7 +43,7 @@ interface DateFieldProps extends BaseProps {
 }
 
 export const TextField = ({
-  label, name, required, type = "text", value, onChange, placeholder, disabled, className,
+  label, name, required, type = "text", value, onChange, placeholder, disabled, error, className,
 }: TextFieldProps) => (
   <div className={cn("space-y-1.5", className)}>
     <Label htmlFor={name} className="text-sm font-medium text-foreground">
@@ -57,8 +58,15 @@ export const TextField = ({
       placeholder={placeholder || label}
       required={required}
       disabled={disabled}
-      className="h-10 bg-background"
+      aria-invalid={Boolean(error)}
+      aria-describedby={error ? `${name}-error` : undefined}
+      className={cn("h-10 bg-background", error && "border-destructive focus-visible:ring-destructive")}
     />
+    {error && (
+      <p id={`${name}-error`} className="text-xs font-medium text-destructive">
+        {error}
+      </p>
+    )}
   </div>
 );
 
