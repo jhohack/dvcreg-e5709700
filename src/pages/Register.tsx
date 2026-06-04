@@ -275,6 +275,11 @@ const calculateAge = (birthdate: Date, today = new Date()) => {
 
 const isValidStudentAge = (birthdate: Date) => calculateAge(birthdate) >= MIN_STUDENT_AGE;
 
+const hasFullNameWord = (value: string) => value
+  .trim()
+  .split(/[^\p{L}]+/u)
+  .some((part) => part.length >= 2);
+
 const persistForm = (form: RegistrationForm) => {
   if (typeof window === "undefined") {
     return;
@@ -889,6 +894,11 @@ const Register = () => {
 
     if (!form.first_name || !form.middle_name || !form.last_name || !form.date_of_birth || !form.gender || !selectedEducationLevel || !form.program || !form.level || !form.email) {
       toast.error("Please fill in all required fields.");
+      return false;
+    }
+
+    if (!hasFullNameWord(form.middle_name)) {
+      toast.error("Middle name must be a full word, not a single letter or initial.");
       return false;
     }
 
