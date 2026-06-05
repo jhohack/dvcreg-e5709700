@@ -276,6 +276,8 @@ const calculateAge = (birthdate: Date, today = new Date()) => {
 
 const isValidStudentAge = (birthdate: Date) => calculateAge(birthdate) >= MIN_STUDENT_AGE;
 
+const isNotApplicableMiddleName = (value: string) => /^n\/a$/i.test(value.trim());
+
 const hasFullNameWord = (value: string) => value
   .trim()
   .split(/[^\p{L}]+/u)
@@ -538,7 +540,7 @@ const Register = () => {
     && debouncedNameCheck.dateOfBirth === nameCheckInput.dateOfBirth;
   const duplicateNameExists = nameCheckMatchesCurrentInput && duplicateNameQuery.data?.exists === true;
   const duplicateNameChecking = hasFullNameForCheck && (!nameCheckMatchesCurrentInput || duplicateNameQuery.isFetching);
-  const middleNameError = form.middle_name.trim() && !hasFullNameWord(form.middle_name)
+  const middleNameError = form.middle_name.trim() && !isNotApplicableMiddleName(form.middle_name) && !hasFullNameWord(form.middle_name)
     ? MIDDLE_NAME_INITIAL_ERROR
     : "";
 
