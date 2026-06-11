@@ -11,7 +11,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM php:8.3-apache
+FROM php:8.3-cli
 
 ENV PORT=8080 \
     REMBG_COMMAND=rembg \
@@ -37,15 +37,12 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY deployment/apache/000-default.conf.template /etc/apache2/sites-available/000-default.conf.template
-COPY deployment/apache/start-app.sh /usr/local/bin/start-app
 COPY --from=frontend-build /app/dist/ /var/www/html/
 COPY api/ /var/www/html/api/
+COPY deployment/php-router.php /var/www/html/router.php
 
-RUN a2enmod rewrite headers \
-    && chmod +x /usr/local/bin/start-app \
-    && chown -R www-data:www-data /var/www/html
+RUN chown -R www-data:www-data /var/www/html
 
 EXPOSE 8080
 
-CMD ["start-app"]
+CMD ["sh", "-c", "php -S 0.0.0.0:${PORT:-8080} -t /var/www/html /var/www/html/router.php"]
