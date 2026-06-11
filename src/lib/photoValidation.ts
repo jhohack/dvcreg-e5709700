@@ -11,28 +11,49 @@ type FaceDetectorCtor = new (options?: {
   maxDetectedFaces?: number;
 }) => FaceDetectorInstance;
 
+type LoadedPhotoSource = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  close?: () => void;
+};
+
 export type PhotoValidationResult =
   | { ok: true }
   | { ok: false; reason: string };
 
-const MIN_SHORT_SIDE = 720;
-const MAX_PORTRAIT_ASPECT_RATIO = 2.0;
-const MIN_AVERAGE_LUMINANCE = 48;
-const MAX_AVERAGE_LUMINANCE = 235;
-const MIN_LUMINANCE_CONTRAST = 16;
-const MIN_EDGE_STRENGTH = 4.5;
-const FACE_MIN_RATIO = 0.18;
-const FACE_MAX_RATIO = 0.72;
-const FACE_MAX_CENTER_OFFSET_X = 0.18;
-const FACE_MAX_CENTER_OFFSET_Y = 0.22;
-const FACE_EDGE_MARGIN = 0.03;
+const MIN_SHORT_SIDE = 640;
+const MAX_PORTRAIT_ASPECT_RATIO = 2.2;
+const MIN_AVERAGE_LUMINANCE = 42;
+const MAX_AVERAGE_LUMINANCE = 242;
+const MIN_LUMINANCE_CONTRAST = 14;
+const MIN_EDGE_STRENGTH = 3.8;
+const FACE_MIN_RATIO = 0.16;
+const FACE_MAX_RATIO = 0.76;
+const FACE_MAX_CENTER_OFFSET_X = 0.2;
+const FACE_MAX_CENTER_OFFSET_Y = 0.26;
+const FACE_EDGE_MARGIN = 0.025;
 
 const fail = (reason: string): PhotoValidationResult => ({
   ok: false,
   reason,
 });
 
-const loadImageFromFile = async (file: File): Promise<HTMLImageElement> => {
+const loadImageFromFile = async (file: File): Promise<LoadedPhotoSource> => {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        close: () => bitmap.close(),
+      };
+    } catch {
+      // Fall back to the HTML image path below.
+    }
+  }
+
   const objectUrl = URL.createObjectURL(file);
 
   try {
@@ -60,15 +81,19 @@ const loadImageFromFile = async (file: File): Promise<HTMLImageElement> => {
       throw new Error("Could not read the photo.");
     }
 
-    return image;
+    return {
+      source: image,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+    };
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
 };
 
-const measureImageMetrics = (image: HTMLImageElement) => {
+const measureImageMetrics = (source: CanvasImageSource, width: number, height: number) => {
   const sampleWidth = 64;
-  const sampleHeight = Math.max(64, Math.round((image.naturalHeight / image.naturalWidth) * sampleWidth));
+  const sampleHeight = Math.max(64, Math.round((height / width) * sampleWidth));
   const canvas = document.createElement("canvas");
   canvas.width = sampleWidth;
   canvas.height = sampleHeight;
@@ -78,7 +103,7 @@ const measureImageMetrics = (image: HTMLImageElement) => {
     throw new Error("Could not analyze the photo.");
   }
 
-  context.drawImage(image, 0, 0, sampleWidth, sampleHeight);
+  context.drawImage(source, 0, 0, sampleWidth, sampleHeight);
 
   const imageData = context.getImageData(0, 0, sampleWidth, sampleHeight);
   const luminance = new Float32Array(sampleWidth * sampleHeight);
@@ -174,10 +199,12 @@ const validateFacePlacement = (face: DetectedFace, imageWidth: number, imageHeig
 };
 
 export const validateStudentPhoto = async (file: File): Promise<PhotoValidationResult> => {
+  let loaded: LoadedPhotoSource | null = null;
+
   try {
-    const image = await loadImageFromFile(file);
-    const shortSide = Math.min(image.naturalWidth, image.naturalHeight);
-    const aspectRatio = Math.max(image.naturalWidth, image.naturalHeight) / shortSide;
+    loaded = await loadImageFromFile(file);
+    const shortSide = Math.min(loaded.width, loaded.height);
+    const aspectRatio = Math.max(loaded.width, loaded.height) / shortSide;
 
     if (shortSide < MIN_SHORT_SIDE) {
       return fail("The photo is too small. Please use a clearer, higher-resolution image.");
@@ -187,7 +214,7 @@ export const validateStudentPhoto = async (file: File): Promise<PhotoValidationR
       return fail("The photo is very wide. Please use a tighter crop if possible.");
     }
 
-    const metrics = measureImageMetrics(image);
+    const metrics = measureImageMetrics(loaded.source, loaded.width, loaded.height);
 
     if (metrics.average < MIN_AVERAGE_LUMINANCE) {
       return fail("The photo is too dark. Please retake it in better light.");
@@ -215,7 +242,7 @@ export const validateStudentPhoto = async (file: File): Promise<PhotoValidationR
       maxDetectedFaces: 2,
     });
 
-    const faces = await detector.detect(image);
+    const faces = await detector.detect(loaded.source);
     if (faces.length === 0) {
       return fail("No clear face was detected. Please use a front-facing portrait photo.");
     }
@@ -224,12 +251,14 @@ export const validateStudentPhoto = async (file: File): Promise<PhotoValidationR
       return fail("Only one person should appear in the photo.");
     }
 
-    return validateFacePlacement(faces[0] as DetectedFace, image.naturalWidth, image.naturalHeight);
+    return validateFacePlacement(faces[0] as DetectedFace, loaded.width, loaded.height);
   } catch (error) {
     return fail(
       error instanceof Error && error.message.trim() !== ""
         ? error.message
         : "Could not analyze the photo. Please try again.",
     );
+  } finally {
+    loaded?.close?.();
   }
 };

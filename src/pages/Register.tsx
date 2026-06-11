@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -499,12 +499,12 @@ const Register = () => {
     queryFn: fetchAcademicCatalog,
     staleTime: 1000 * 60 * 10,
   });
-  const nameCheckInput = {
+  const nameCheckInput = useMemo(() => ({
     firstName: form.first_name.trim(),
     middleName: form.middle_name.trim(),
     lastName: form.last_name.trim(),
     dateOfBirth: form.date_of_birth ? formatLocalDate(form.date_of_birth) : "",
-  };
+  }), [form.first_name, form.middle_name, form.last_name, form.date_of_birth]);
   const hasFullNameForCheck = Boolean(nameCheckInput.firstName && nameCheckInput.middleName && nameCheckInput.lastName && nameCheckInput.dateOfBirth);
   const checkDuplicateName = async (): Promise<DuplicateNameResponse> => {
     const rpcClient = supabase as unknown as {
@@ -551,7 +551,7 @@ const Register = () => {
     }
 
     setDebouncedNameCheck(nameCheckInput);
-  }, [hasFullNameForCheck, nameCheckInput.firstName, nameCheckInput.middleName, nameCheckInput.lastName, nameCheckInput.dateOfBirth]);
+  }, [hasFullNameForCheck, nameCheckInput]);
 
   useEffect(() => {
     if (!submitted) {
@@ -705,6 +705,7 @@ const Register = () => {
     }
 
     errorSetter(null);
+    uploadingSetter(true);
 
     try {
       if (kind === "photo") {
@@ -714,7 +715,6 @@ const Register = () => {
         }
       }
 
-      uploadingSetter(true);
       const fileToUpload = kind === "photo"
         ? await processPhotoBackground(file)
         : file;

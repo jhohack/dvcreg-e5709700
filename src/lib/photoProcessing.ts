@@ -3,8 +3,8 @@ const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().repla
 export const ACCEPTED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 export const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
 
-const PHOTO_CLEANUP_MAX_SIDE = 1200;
-const PHOTO_CLEANUP_JPEG_QUALITY = 0.9;
+const PHOTO_CLEANUP_MAX_SIDE = 1024;
+const PHOTO_CLEANUP_JPEG_QUALITY = 0.84;
 const photoCleanupServiceUnavailableMessage = "Photo cleanup service is unavailable right now. Please try again in a moment.";
 
 export const buildProcessedPhotoFileName = (originalFileName: string) => {
@@ -94,7 +94,28 @@ const renderBlobOnWhiteCanvas = async (blob: Blob): Promise<Blob> => {
   }
 };
 
-const loadImageFromBlob = async (blob: Blob): Promise<HTMLImageElement> => {
+type LoadedPhotoSource = {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  close?: () => void;
+};
+
+const loadImageFromBlob = async (blob: Blob): Promise<LoadedPhotoSource> => {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(blob);
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        close: () => bitmap.close(),
+      };
+    } catch {
+      // Fall back to the HTML image path below.
+    }
+  }
+
   const objectUrl = URL.createObjectURL(blob);
 
   try {
@@ -122,7 +143,11 @@ const loadImageFromBlob = async (blob: Blob): Promise<HTMLImageElement> => {
       throw new Error("Could not prepare the photo for cleanup.");
     }
 
-    return image;
+    return {
+      source: image,
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+    };
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
@@ -130,8 +155,8 @@ const loadImageFromBlob = async (blob: Blob): Promise<HTMLImageElement> => {
 
 const preparePhotoForCleanup = async (file: File): Promise<File> => {
   const image = await loadImageFromBlob(file);
-  const sourceWidth = image.naturalWidth;
-  const sourceHeight = image.naturalHeight;
+  const sourceWidth = image.width;
+  const sourceHeight = image.height;
   const longestSide = Math.max(sourceWidth, sourceHeight);
   const scale = Math.min(1, PHOTO_CLEANUP_MAX_SIDE / longestSide);
   const width = Math.max(1, Math.round(sourceWidth * scale));
@@ -143,6 +168,7 @@ const preparePhotoForCleanup = async (file: File): Promise<File> => {
 
   const context = canvas.getContext("2d", { alpha: false });
   if (!context) {
+    image.close?.();
     throw new Error("Could not prepare the photo for cleanup.");
   }
 
@@ -150,27 +176,31 @@ const preparePhotoForCleanup = async (file: File): Promise<File> => {
   context.fillRect(0, 0, width, height);
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
-  context.drawImage(image, 0, 0, width, height);
+  context.drawImage(image.source, 0, 0, width, height);
 
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((result) => {
-      if (result) {
-        resolve(result);
-        return;
-      }
+  try {
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((result) => {
+        if (result) {
+          resolve(result);
+          return;
+        }
 
-      reject(new Error("Could not prepare the photo for cleanup."));
-    }, "image/jpeg", PHOTO_CLEANUP_JPEG_QUALITY);
-  });
+        reject(new Error("Could not prepare the photo for cleanup."));
+      }, "image/jpeg", PHOTO_CLEANUP_JPEG_QUALITY);
+    });
 
-  if (blob.size >= file.size && file.type === "image/jpeg") {
-    return file;
+    if (blob.size >= file.size && file.type === "image/jpeg") {
+      return file;
+    }
+
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") || file.name, {
+      type: "image/jpeg",
+      lastModified: file.lastModified,
+    });
+  } finally {
+    image.close?.();
   }
-
-  return new File([blob], file.name.replace(/\.[^.]+$/, "") || file.name, {
-    type: "image/jpeg",
-    lastModified: file.lastModified,
-  });
 };
 
 const removePhotoBackgroundInBrowser = async (file: File): Promise<File> => {
