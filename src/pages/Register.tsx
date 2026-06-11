@@ -715,9 +715,16 @@ const Register = () => {
         }
       }
 
-      const fileToUpload = kind === "photo"
-        ? await processPhotoBackground(file)
-        : file;
+      let fileToUpload = file;
+      if (kind === "photo") {
+        try {
+          fileToUpload = await processPhotoBackground(file);
+        } catch (cleanupError) {
+          console.warn("Photo cleanup failed. Uploading the original photo instead.", cleanupError);
+          toast.info("The photo was uploaded, but background cleanup could not finish. The original photo will be used.");
+        }
+      }
+
       const localPreviewUrl = URL.createObjectURL(fileToUpload);
       replacePreviewUrl(previewSetter, localPreviewUrl);
 
