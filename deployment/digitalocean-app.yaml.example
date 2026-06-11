@@ -13,23 +13,23 @@ services:
     envs:
       - key: SMTP_HOST
         scope: RUN_TIME
-        value: smtp.gmail.com
+        value: your_smtp_host
       - key: SMTP_PORT
         scope: RUN_TIME
         value: "587"
       - key: SMTP_USERNAME
         scope: RUN_TIME
-        value: your_email@gmail.com
+        value: dvcregistrar@dvci-edu.com
       - key: SMTP_PASSWORD
         scope: RUN_TIME
-        value: your_gmail_app_password
+        value: your_smtp_password
         type: SECRET
       - key: SMTP_SECURE
         scope: RUN_TIME
         value: tls
       - key: MAIL_FROM_ADDRESS
         scope: RUN_TIME
-        value: your_email@gmail.com
+        value: dvcregistrar@dvci-edu.com
       - key: MAIL_FROM_NAME
         scope: RUN_TIME
         value: DVC Registration

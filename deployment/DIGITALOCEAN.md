@@ -39,12 +39,12 @@ The Dockerfile already builds the frontend with `VITE_API_BASE_URL=/api`, so the
 Set these runtime variables:
 
 ```env
-SMTP_HOST=smtp.gmail.com
+SMTP_HOST=your_smtp_host
 SMTP_PORT=587
-SMTP_USERNAME=your_email@gmail.com
-SMTP_PASSWORD=your_gmail_app_password
+SMTP_USERNAME=dvcregistrar@dvci-edu.com
+SMTP_PASSWORD=your_smtp_password
 SMTP_SECURE=tls
-MAIL_FROM_ADDRESS=your_email@gmail.com
+MAIL_FROM_ADDRESS=dvcregistrar@dvci-edu.com
 MAIL_FROM_NAME=DVC Registration
 MAIL_CODE_TTL_MINUTES=10
 SMTP_TIMEOUT_SECONDS=20
@@ -56,6 +56,8 @@ REMBG_MODEL=isnet-general-use
 ```
 
 Mark `SMTP_PASSWORD` and `SUPABASE_SERVICE_ROLE_KEY` as secrets.
+
+If your mailbox is hosted by a provider like Gmail, Resend, cPanel, or another SMTP service, replace `SMTP_HOST` with that provider's server name and use the password or app password they issue for SMTP access.
 
 ## 4. Supabase
 

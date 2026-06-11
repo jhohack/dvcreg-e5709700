@@ -36,12 +36,12 @@ No Composer install is required on the server.
 ## Required `.env.local` Values
 
 ```env
-SMTP_HOST=smtp.gmail.com
+SMTP_HOST=your_smtp_host
 SMTP_PORT=587
-SMTP_USERNAME=your_email@gmail.com
-SMTP_PASSWORD=your_gmail_app_password
+SMTP_USERNAME=dvcregistrar@dvci-edu.com
+SMTP_PASSWORD=your_smtp_password
 SMTP_SECURE=tls
-MAIL_FROM_ADDRESS=your_email@gmail.com
+MAIL_FROM_ADDRESS=dvcregistrar@dvci-edu.com
 MAIL_FROM_NAME=DVC Registration
 MAIL_CODE_TTL_MINUTES=10
 SMTP_TIMEOUT_SECONDS=20
@@ -94,6 +94,7 @@ Server requirements:
 
 - This backend still needs a real PHP runtime. A frontend-only host cannot run it.
 - `SMTP_SECURE` can be `tls`, `ssl`, or `none`.
+- If this mailbox is hosted by a provider such as Gmail, Resend, or cPanel, use the SMTP host and password that provider gives you.
 - Keep `.env.local` on the PHP host only.
 - Do not upload your local `.env.local` file from this machine.
-- Rotate the Gmail app password before production use if it was ever shared.
+- Rotate the SMTP password before production use if it was ever shared.

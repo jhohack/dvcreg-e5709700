@@ -686,7 +686,7 @@ function format_email_address(string $email, ?string $name = null): string
         return sprintf('<%s>', $address);
     }
 
-    return sprintf('%s <%s>', encode_mail_header(trim($name)), $address . '>');
+    return sprintf('%s <%s>', encode_mail_header(trim($name)), $address);
 }
 
 function normalize_mail_body(string $body): string
