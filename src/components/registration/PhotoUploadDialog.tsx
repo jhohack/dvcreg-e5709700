@@ -17,12 +17,14 @@ import {
   fetchRegistrationMediaAssetByDraft,
   type RegistrationMediaAsset,
 } from "@/lib/registrationMedia";
+import { supabase } from "@/integrations/supabase/client";
 
 const ACCEPTED_MEDIA_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_MEDIA_SIZE_BYTES = 5 * 1024 * 1024;
 const CLEANUP_ESTIMATE_MS = 3000;
 const CLEANUP_PROGRESS_MIN = 18;
 const CLEANUP_PROGRESS_MAX = 92;
+const REMOTE_PROCESSING_TIMEOUT_MS = 20000;
 
 const photoRequirementItems = [
   {
@@ -109,9 +111,36 @@ const PhotoUploadDialog = ({
       mediaKind: "profile_photo",
     }),
     enabled: open && tab === "remote" && Boolean(registrationDraftId),
-    refetchInterval: open && tab === "remote" ? 2500 : false,
+    refetchInterval: open && tab === "remote" ? 15000 : false,
     staleTime: 0,
   });
+  const { refetch: refetchRemotePhotoQuery } = remotePhotoQuery;
+
+  useEffect(() => {
+    if (!open || tab !== "remote" || !registrationDraftId) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`registration-media-${registrationDraftId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "registration_media",
+          filter: `registration_draft_id=eq.${registrationDraftId}`,
+        },
+        () => {
+          void refetchRemotePhotoQuery();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [open, refetchRemotePhotoQuery, registrationDraftId, tab]);
 
   const stopCameraStream = () => {
     cameraSessionActiveRef.current = false;
@@ -293,11 +322,46 @@ const PhotoUploadDialog = ({
       return;
     }
 
+    if ((remoteAsset.processing_status ?? "ready") !== "ready") {
+      return;
+    }
+
     lastRemoteMediaIdRef.current = remoteAsset.media_id;
     onRemotePhotoReady(remoteAsset);
     setOpen(false);
     toast.success("Photo received from the other device.");
   }, [onRemotePhotoReady, remotePhotoQuery.data]);
+
+  useEffect(() => {
+    if (!open || tab !== "remote") {
+      return;
+    }
+
+    const remoteAsset = remotePhotoQuery.data;
+    if (!remoteAsset?.media_id || (remoteAsset.processing_status ?? "ready") === "ready") {
+      return;
+    }
+
+    const startedAt = new Date(remoteAsset.updated_at ?? remoteAsset.created_at ?? "").getTime();
+    if (!Number.isFinite(startedAt)) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (lastRemoteMediaIdRef.current === remoteAsset.media_id) {
+        return;
+      }
+
+      lastRemoteMediaIdRef.current = remoteAsset.media_id;
+      onRemotePhotoReady(remoteAsset);
+      setOpen(false);
+      toast.info("The uploaded version was attached because background cleanup took longer than expected.");
+    }, Math.max(0, REMOTE_PROCESSING_TIMEOUT_MS - (Date.now() - startedAt)));
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [open, onRemotePhotoReady, remotePhotoQuery.data, tab]);
 
   useEffect(() => {
     return () => {
@@ -788,6 +852,15 @@ const PhotoUploadDialog = ({
                     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
                       {remotePhotoQuery.data?.content_base64 ? (
                         <div className="space-y-3">
+                          {(remotePhotoQuery.data.processing_status ?? "ready") !== "ready" && (
+                            <Alert className="border-primary/30 bg-primary/5 text-primary">
+                              <RefreshCcw className="h-4 w-4 animate-spin" />
+                              <AlertTitle>Photo received</AlertTitle>
+                              <AlertDescription className="text-primary/80">
+                                Cleaning the background now. The form will update when the final version is ready.
+                              </AlertDescription>
+                            </Alert>
+                          )}
                           <div className="overflow-hidden rounded-2xl border border-border bg-muted/20">
                             <img
                               src={buildRegistrationMediaDataUrl(remotePhotoQuery.data)}
@@ -795,7 +868,11 @@ const PhotoUploadDialog = ({
                               className="aspect-square w-full object-cover"
                             />
                           </div>
-                          <p className="text-sm font-semibold text-success">Photo received. Closing this modal now.</p>
+                          {(remotePhotoQuery.data.processing_status ?? "ready") === "ready" ? (
+                            <p className="text-sm font-semibold text-success">Photo received. Closing this modal now.</p>
+                          ) : (
+                            <p className="text-sm font-semibold text-primary">Waiting for the cleaned photo.</p>
+                          )}
                         </div>
                       ) : (
                         <div className="flex min-h-[320px] flex-col items-center justify-center text-center">

@@ -26,6 +26,7 @@ const MobilePhotoUpload = () => {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploaded, setUploaded] = useState(false);
+  const uploadTokenRef = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -72,6 +73,7 @@ const MobilePhotoUpload = () => {
     setSubmitting(true);
     setError(null);
     setUploaded(false);
+    const uploadToken = ++uploadTokenRef.current;
 
     try {
       const photoValidation = await validateStudentPhoto(file);
@@ -79,19 +81,67 @@ const MobilePhotoUpload = () => {
         throw new Error(photoValidation.reason);
       }
 
-      const processedFile = await processPhotoBackground(file);
-      await storeRegistrationMediaAsset({
+      const rawContentType = file.type || "image/jpeg";
+      const rawContentBase64 = await fileToBase64(file);
+      const rawAsset = await storeRegistrationMediaAsset({
         registrationDraftId: draftId,
         mediaKind: "profile_photo",
-        fileName: processedFile.name,
-        contentType: processedFile.type || "image/jpeg",
-        contentBase64: await fileToBase64(processedFile),
+        fileName: file.name,
+        contentType: rawContentType,
+        contentBase64: rawContentBase64,
+        processingStatus: "processing",
       });
 
-      replacePreviewUrl(URL.createObjectURL(processedFile));
-      setSelectedFileName(processedFile.name);
+      if (uploadToken !== uploadTokenRef.current) {
+        return;
+      }
+
+      replacePreviewUrl(URL.createObjectURL(file));
+      setSelectedFileName(file.name);
       setUploaded(true);
-      toast.success("Photo sent to the registration form.");
+      toast.success("Photo received. Cleaning the background now.");
+
+      void (async () => {
+        try {
+          const processedFile = await processPhotoBackground(file);
+          if (uploadToken !== uploadTokenRef.current) {
+            return;
+          }
+
+          const cleanedAsset = await storeRegistrationMediaAsset({
+            registrationDraftId: draftId,
+            mediaKind: "profile_photo",
+            fileName: processedFile.name,
+            contentType: processedFile.type || "image/jpeg",
+            contentBase64: await fileToBase64(processedFile),
+            processingStatus: "ready",
+          });
+
+          if (uploadToken !== uploadTokenRef.current) {
+            return;
+          }
+
+          replacePreviewUrl(URL.createObjectURL(processedFile));
+          setSelectedFileName(cleanedAsset.file_name);
+          toast.success("Photo sent to the registration form.");
+        } catch (cleanupError) {
+          if (uploadToken !== uploadTokenRef.current) {
+            return;
+          }
+
+          await storeRegistrationMediaAsset({
+            registrationDraftId: draftId,
+            mediaKind: "profile_photo",
+            fileName: rawAsset.file_name,
+            contentType: rawAsset.content_type,
+            contentBase64: rawContentBase64,
+            processingStatus: "ready",
+            processingError: cleanupError instanceof Error ? cleanupError.message : "Background cleanup failed.",
+          }).catch(() => undefined);
+
+          toast("The photo was attached, but background cleanup could not finish. The uploaded version will be used.");
+        }
+      })();
     } catch (uploadError) {
       replacePreviewUrl(null);
       setSelectedFileName(null);

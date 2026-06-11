@@ -9,6 +9,8 @@ export type RegistrationMediaAsset = {
   file_name: string;
   content_type: string;
   byte_size: number;
+  processing_status?: "processing" | "ready" | "error" | string;
+  processing_error?: string | null;
   content_base64?: string;
   created_at?: string;
   updated_at?: string;
@@ -52,6 +54,8 @@ export const storeRegistrationMediaAsset = async (input: {
   fileName: string;
   contentType: string;
   contentBase64: string;
+  processingStatus?: "processing" | "ready" | "error";
+  processingError?: string | null;
 }): Promise<RegistrationMediaAsset> => {
   return await callRegistrationMediaRpc<RegistrationMediaAsset>("upsert_registration_media_asset", {
     p_registration_draft_id: input.registrationDraftId,
@@ -59,6 +63,8 @@ export const storeRegistrationMediaAsset = async (input: {
     p_file_name: input.fileName,
     p_content_type: input.contentType,
     p_content_base64: input.contentBase64,
+    p_processing_status: input.processingStatus ?? "ready",
+    p_processing_error: input.processingError ?? null,
   });
 };
 
