@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   buildRegistrationMediaDataUrl,
   fetchRegistrationMediaAssetByDraft,
+  getRegistrationMediaStoragePath,
   type RegistrationMediaAsset,
 } from "@/lib/registrationMedia";
 import { supabase } from "@/integrations/supabase/client";
@@ -104,12 +105,44 @@ const PhotoUploadDialog = ({
   const remoteUploadUrl = typeof window === "undefined"
     ? ""
     : `${window.location.origin}/mobile-photo-upload?draft=${encodeURIComponent(registrationDraftId)}`;
-  const remotePhotoQuery = useQuery({
-    queryKey: ["registration-remote-photo", registrationDraftId],
-    queryFn: () => fetchRegistrationMediaAssetByDraft({
+  const fetchRemotePhotoAsset = async () => {
+    const rpcAsset = await fetchRegistrationMediaAssetByDraft({
       registrationDraftId,
       mediaKind: "profile_photo",
-    }),
+    });
+    if (rpcAsset) {
+      return rpcAsset;
+    }
+
+    const storagePath = getRegistrationMediaStoragePath(registrationDraftId, "profile_photo");
+    const { data, error } = await supabase.storage
+      .from("registration-media")
+      .list(`registration-drafts/${registrationDraftId}`, {
+        limit: 1,
+        search: "student-photo",
+      });
+
+    if (error || !data?.some((item) => item.name === "student-photo")) {
+      return null;
+    }
+
+    const timestamp = new Date().toISOString();
+    return {
+      media_id: storagePath,
+      registration_draft_id: registrationDraftId,
+      media_kind: "profile_photo",
+      file_name: "student-photo",
+      content_type: "image/jpeg",
+      byte_size: 0,
+      storage_path: storagePath,
+      processing_status: "ready",
+      created_at: timestamp,
+      updated_at: timestamp,
+    } satisfies RegistrationMediaAsset;
+  };
+  const remotePhotoQuery = useQuery({
+    queryKey: ["registration-remote-photo", registrationDraftId],
+    queryFn: fetchRemotePhotoAsset,
     enabled: open && tab === "remote" && Boolean(registrationDraftId),
     refetchInterval: open && tab === "remote" ? 15000 : false,
     staleTime: 0,

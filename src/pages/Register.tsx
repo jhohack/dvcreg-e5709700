@@ -57,8 +57,11 @@ import {
   deleteRegistrationMediaAsset,
   fileToBase64,
   fetchRegistrationMediaAsset,
+  getRegistrationMediaErrorMessage,
   type RegistrationMediaAsset,
   storeRegistrationMediaAsset,
+  uploadRegistrationMediaFileToStorage,
+  type RegistrationMediaKind,
 } from "@/lib/registrationMedia";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/integrations/supabase/client";
@@ -545,6 +548,37 @@ const Register = () => {
     ? MIDDLE_NAME_INITIAL_ERROR
     : "";
 
+  const storeMediaWithFallback = async (input: {
+    file: File;
+    mediaKind: RegistrationMediaKind;
+    contentBase64?: string;
+    processingStatus?: "processing" | "ready" | "error";
+    processingError?: string | null;
+  }) => {
+    const contentType = input.file.type || "application/octet-stream";
+    try {
+      return await storeRegistrationMediaAsset({
+        registrationDraftId,
+        mediaKind: input.mediaKind,
+        fileName: input.file.name,
+        contentType,
+        contentBase64: input.contentBase64 ?? await fileToBase64(input.file),
+        processingStatus: input.processingStatus,
+        processingError: input.processingError,
+      });
+    } catch (rpcError) {
+      console.warn("Registration media RPC upload failed. Falling back to storage upload.", rpcError);
+      return await uploadRegistrationMediaFileToStorage({
+        registrationDraftId,
+        mediaKind: input.mediaKind,
+        file: input.file,
+        contentType,
+        processingStatus: input.processingStatus,
+        processingError: input.processingError,
+      });
+    }
+  };
+
   useEffect(() => {
     if (!hasFullNameForCheck) {
       setDebouncedNameCheck({ firstName: "", middleName: "", lastName: "", dateOfBirth: "" });
@@ -723,13 +757,10 @@ const Register = () => {
 
       if (kind === "photo") {
         const uploadToken = ++photoUploadTokenRef.current;
-        const rawContentType = file.type || "image/jpeg";
         const rawContentBase64 = await fileToBase64(file);
-        const rawAsset = await storeRegistrationMediaAsset({
-          registrationDraftId,
+        const rawAsset = await storeMediaWithFallback({
+          file,
           mediaKind,
-          fileName: file.name,
-          contentType: rawContentType,
           contentBase64: rawContentBase64,
           processingStatus: "processing",
         });
@@ -737,8 +768,8 @@ const Register = () => {
         replacePreviewUrl(previewSetter, URL.createObjectURL(file));
         setForm((prev) => ({
           ...prev,
-          profile_photo_media_id: rawAsset.media_id,
-          profile_photo_path: "",
+          profile_photo_media_id: rawAsset.media_id || "",
+          profile_photo_path: rawAsset.storage_path ?? "",
           profile_photo_file_name: rawAsset.file_name,
           profile_photo_revision: String(Date.now()),
         }));
@@ -750,11 +781,9 @@ const Register = () => {
               return;
             }
 
-            const cleanedAsset = await storeRegistrationMediaAsset({
-              registrationDraftId,
+            const cleanedAsset = await storeMediaWithFallback({
+              file: cleanedFile,
               mediaKind,
-              fileName: cleanedFile.name,
-              contentType: cleanedFile.type || "image/jpeg",
               contentBase64: await fileToBase64(cleanedFile),
               processingStatus: "ready",
             });
@@ -766,8 +795,8 @@ const Register = () => {
             replacePreviewUrl(previewSetter, URL.createObjectURL(cleanedFile));
             setForm((prev) => ({
               ...prev,
-              profile_photo_media_id: cleanedAsset.media_id,
-              profile_photo_path: "",
+              profile_photo_media_id: cleanedAsset.media_id || "",
+              profile_photo_path: cleanedAsset.storage_path ?? "",
               profile_photo_file_name: cleanedAsset.file_name,
               profile_photo_revision: String(Date.now()),
             }));
@@ -776,11 +805,9 @@ const Register = () => {
               return;
             }
 
-            await storeRegistrationMediaAsset({
-              registrationDraftId,
+            await storeMediaWithFallback({
+              file,
               mediaKind,
-              fileName: rawAsset.file_name,
-              contentType: rawAsset.content_type,
               contentBase64: rawContentBase64,
               processingStatus: "ready",
               processingError: cleanupError instanceof Error ? cleanupError.message : "Background cleanup failed.",
@@ -796,25 +823,23 @@ const Register = () => {
       const localPreviewUrl = URL.createObjectURL(file);
       replacePreviewUrl(previewSetter, localPreviewUrl);
 
-      const storedAsset = await storeRegistrationMediaAsset({
-        registrationDraftId,
+      const storedAsset = await storeMediaWithFallback({
+        file,
         mediaKind,
-        fileName: file.name,
-        contentType: file.type || "application/octet-stream",
-        contentBase64: await fileToBase64(file),
       });
 
       setForm((prev) => ({
         ...prev,
-        signature_media_id: storedAsset.media_id,
-        signature_path: "",
+        signature_media_id: storedAsset.media_id || "",
+        signature_path: storedAsset.storage_path ?? "",
         signature_file_name: storedAsset.file_name,
         signature_revision: String(Date.now()),
       }));
     } catch (error) {
       replacePreviewUrl(previewSetter, null);
-      errorSetter(error instanceof Error ? error.message : `Could not upload ${kind === "photo" ? "the photo" : "the signature"}.`);
-      toast.error(error instanceof Error ? error.message : `Could not upload ${kind === "photo" ? "the photo" : "the signature"}.`);
+      const message = getRegistrationMediaErrorMessage(error) || `Could not upload ${kind === "photo" ? "the photo" : "the signature"}.`;
+      errorSetter(message);
+      toast.error(message);
       return false;
     } finally {
       uploadingSetter(false);
@@ -832,16 +857,23 @@ const Register = () => {
   };
 
   const handleRemotePhotoReady = (asset: RegistrationMediaAsset) => {
-    if (asset.media_kind !== "profile_photo" || !asset.content_base64) {
+    if (asset.media_kind !== "profile_photo") {
       return;
     }
 
-    replacePreviewUrl(setPhotoPreviewUrl, buildRegistrationMediaDataUrl(asset));
+    replacePreviewUrl(
+      setPhotoPreviewUrl,
+      asset.content_base64
+        ? buildRegistrationMediaDataUrl(asset)
+        : asset.storage_path
+          ? getMediaPreviewUrl(asset.storage_path, asset.updated_at ?? String(Date.now()))
+          : null,
+    );
     setPhotoUploadError(null);
     setForm((prev) => ({
       ...prev,
-      profile_photo_media_id: asset.media_id,
-      profile_photo_path: "",
+      profile_photo_media_id: asset.content_base64 ? asset.media_id : "",
+      profile_photo_path: asset.content_base64 ? "" : asset.storage_path ?? "",
       profile_photo_file_name: asset.file_name,
       profile_photo_revision: String(Date.now()),
     }));

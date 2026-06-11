@@ -9,6 +9,7 @@ export type RegistrationMediaAsset = {
   file_name: string;
   content_type: string;
   byte_size: number;
+  storage_path?: string;
   processing_status?: "processing" | "ready" | "error" | string;
   processing_error?: string | null;
   content_base64?: string;
@@ -17,6 +18,7 @@ export type RegistrationMediaAsset = {
 };
 
 type RegistrationMediaRpcResponse = RegistrationMediaAsset | null;
+const MEDIA_BUCKET = "registration-media";
 
 const callRegistrationMediaRpc = async <T,>(
   functionName: string,
@@ -25,18 +27,29 @@ const callRegistrationMediaRpc = async <T,>(
   const { data, error } = await supabase.rpc(functionName, args);
 
   if (error) {
-    throw error;
+    throw new Error(getRegistrationMediaErrorMessage(error));
   }
 
   return data as T;
 };
 
-const isMissingRpcSignatureError = (error: unknown): boolean => {
-  if (!error || typeof error !== "object") {
-    return false;
+export const getRegistrationMediaErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message.trim() !== "") {
+    return error.message.trim();
   }
 
-  const message = "message" in error ? String((error as { message?: unknown }).message ?? "") : "";
+  if (error && typeof error === "object" && "message" in error) {
+    const message = String((error as { message?: unknown }).message ?? "").trim();
+    if (message) {
+      return message;
+    }
+  }
+
+  return "Could not upload the file.";
+};
+
+const isMissingRpcSignatureError = (error: unknown): boolean => {
+  const message = getRegistrationMediaErrorMessage(error);
   return /could not find the function|function .* does not exist|no function matches/i.test(message);
 };
 
@@ -90,6 +103,50 @@ export const storeRegistrationMediaAsset = async (input: {
 
     return await callRegistrationMediaRpc<RegistrationMediaAsset>("upsert_registration_media_asset", baseArgs);
   }
+};
+
+export const getRegistrationMediaStoragePath = (
+  registrationDraftId: string,
+  mediaKind: RegistrationMediaKind,
+): string => {
+  const folder = mediaKind === "profile_photo" ? "student-photo" : "student-signature";
+  return `registration-drafts/${registrationDraftId}/${folder}`;
+};
+
+export const uploadRegistrationMediaFileToStorage = async (input: {
+  registrationDraftId: string;
+  mediaKind: RegistrationMediaKind;
+  file: File;
+  contentType?: string;
+  processingStatus?: "processing" | "ready" | "error";
+  processingError?: string | null;
+}): Promise<RegistrationMediaAsset> => {
+  const storagePath = getRegistrationMediaStoragePath(input.registrationDraftId, input.mediaKind);
+  const contentType = input.contentType || input.file.type || "application/octet-stream";
+  const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(storagePath, input.file, {
+    cacheControl: "3600",
+    contentType,
+    upsert: true,
+  });
+
+  if (error) {
+    throw new Error(getRegistrationMediaErrorMessage(error));
+  }
+
+  const timestamp = new Date().toISOString();
+  return {
+    media_id: "",
+    registration_draft_id: input.registrationDraftId,
+    media_kind: input.mediaKind,
+    file_name: input.file.name,
+    content_type: contentType,
+    byte_size: input.file.size,
+    storage_path: storagePath,
+    processing_status: input.processingStatus ?? "ready",
+    processing_error: input.processingError ?? null,
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
 };
 
 export const fetchRegistrationMediaAsset = async (mediaId: string): Promise<RegistrationMediaRpcResponse> => {

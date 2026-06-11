@@ -8,7 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { fileToBase64, storeRegistrationMediaAsset } from "@/lib/registrationMedia";
+import {
+  fileToBase64,
+  getRegistrationMediaErrorMessage,
+  storeRegistrationMediaAsset,
+  uploadRegistrationMediaFileToStorage,
+} from "@/lib/registrationMedia";
 import {
   ACCEPTED_PHOTO_TYPES,
   MAX_PHOTO_SIZE_BYTES,
@@ -58,6 +63,36 @@ const MobilePhotoUpload = () => {
     return null;
   };
 
+  const storePhotoWithFallback = async (input: {
+    file: File;
+    contentBase64?: string;
+    processingStatus?: "processing" | "ready" | "error";
+    processingError?: string | null;
+  }) => {
+    const contentType = input.file.type || "image/jpeg";
+    try {
+      return await storeRegistrationMediaAsset({
+        registrationDraftId: draftId,
+        mediaKind: "profile_photo",
+        fileName: input.file.name,
+        contentType,
+        contentBase64: input.contentBase64 ?? await fileToBase64(input.file),
+        processingStatus: input.processingStatus,
+        processingError: input.processingError,
+      });
+    } catch (rpcError) {
+      console.warn("Registration media RPC upload failed. Falling back to storage upload.", rpcError);
+      return await uploadRegistrationMediaFileToStorage({
+        registrationDraftId: draftId,
+        mediaKind: "profile_photo",
+        file: input.file,
+        contentType,
+        processingStatus: input.processingStatus,
+        processingError: input.processingError,
+      });
+    }
+  };
+
   const handleFile = async (file: File) => {
     if (!draftId) {
       setError("This upload link is missing its pairing code. Please scan the code again from the registration form.");
@@ -86,13 +121,9 @@ const MobilePhotoUpload = () => {
         }
       }
 
-      const rawContentType = file.type || "image/jpeg";
       const rawContentBase64 = await fileToBase64(file);
-      const rawAsset = await storeRegistrationMediaAsset({
-        registrationDraftId: draftId,
-        mediaKind: "profile_photo",
-        fileName: file.name,
-        contentType: rawContentType,
+      await storePhotoWithFallback({
+        file,
         contentBase64: rawContentBase64,
         processingStatus: "processing",
       });
@@ -113,11 +144,8 @@ const MobilePhotoUpload = () => {
             return;
           }
 
-          const cleanedAsset = await storeRegistrationMediaAsset({
-            registrationDraftId: draftId,
-            mediaKind: "profile_photo",
-            fileName: processedFile.name,
-            contentType: processedFile.type || "image/jpeg",
+          const cleanedAsset = await storePhotoWithFallback({
+            file: processedFile,
             contentBase64: await fileToBase64(processedFile),
             processingStatus: "ready",
           });
@@ -134,11 +162,8 @@ const MobilePhotoUpload = () => {
             return;
           }
 
-          await storeRegistrationMediaAsset({
-            registrationDraftId: draftId,
-            mediaKind: "profile_photo",
-            fileName: rawAsset.file_name,
-            contentType: rawAsset.content_type,
+          await storePhotoWithFallback({
+            file,
             contentBase64: rawContentBase64,
             processingStatus: "ready",
             processingError: cleanupError instanceof Error ? cleanupError.message : "Background cleanup failed.",
@@ -150,7 +175,7 @@ const MobilePhotoUpload = () => {
     } catch (uploadError) {
       replacePreviewUrl(null);
       setSelectedFileName(null);
-      setError(uploadError instanceof Error ? uploadError.message : "Could not upload the photo.");
+      setError(getRegistrationMediaErrorMessage(uploadError) || "Could not upload the photo.");
     } finally {
       setSubmitting(false);
     }
