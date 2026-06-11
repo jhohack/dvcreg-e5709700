@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { TablesInsert } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -487,6 +487,7 @@ const Register = () => {
   const [signatureUploading, setSignatureUploading] = useState(false);
   const [photoUploadError, setPhotoUploadError] = useState<string | null>(null);
   const [signatureUploadError, setSignatureUploadError] = useState<string | null>(null);
+  const photoUploadTokenRef = useRef(0);
   const [dateOfBirthError, setDateOfBirthError] = useState<string | null>(null);
   const [debouncedNameCheck, setDebouncedNameCheck] = useState({
     firstName: "",
@@ -720,44 +721,96 @@ const Register = () => {
         }
       }
 
-      let fileToUpload = file;
       if (kind === "photo") {
-        try {
-          fileToUpload = await processPhotoBackground(file);
-        } catch (cleanupError) {
-          console.warn("Photo cleanup failed. Uploading the original photo instead.", cleanupError);
-          toast.info("The photo was uploaded, but background cleanup could not finish. The original photo will be used.");
-        }
+        const uploadToken = ++photoUploadTokenRef.current;
+        const rawContentType = file.type || "image/jpeg";
+        const rawContentBase64 = await fileToBase64(file);
+        const rawAsset = await storeRegistrationMediaAsset({
+          registrationDraftId,
+          mediaKind,
+          fileName: file.name,
+          contentType: rawContentType,
+          contentBase64: rawContentBase64,
+          processingStatus: "processing",
+        });
+
+        replacePreviewUrl(previewSetter, URL.createObjectURL(file));
+        setForm((prev) => ({
+          ...prev,
+          profile_photo_media_id: rawAsset.media_id,
+          profile_photo_path: "",
+          profile_photo_file_name: rawAsset.file_name,
+          profile_photo_revision: String(Date.now()),
+        }));
+
+        void (async () => {
+          try {
+            const cleanedFile = await processPhotoBackground(file);
+            if (uploadToken !== photoUploadTokenRef.current) {
+              return;
+            }
+
+            const cleanedAsset = await storeRegistrationMediaAsset({
+              registrationDraftId,
+              mediaKind,
+              fileName: cleanedFile.name,
+              contentType: cleanedFile.type || "image/jpeg",
+              contentBase64: await fileToBase64(cleanedFile),
+              processingStatus: "ready",
+            });
+
+            if (uploadToken !== photoUploadTokenRef.current) {
+              return;
+            }
+
+            replacePreviewUrl(previewSetter, URL.createObjectURL(cleanedFile));
+            setForm((prev) => ({
+              ...prev,
+              profile_photo_media_id: cleanedAsset.media_id,
+              profile_photo_path: "",
+              profile_photo_file_name: cleanedAsset.file_name,
+              profile_photo_revision: String(Date.now()),
+            }));
+          } catch (cleanupError) {
+            if (uploadToken !== photoUploadTokenRef.current) {
+              return;
+            }
+
+            await storeRegistrationMediaAsset({
+              registrationDraftId,
+              mediaKind,
+              fileName: rawAsset.file_name,
+              contentType: rawAsset.content_type,
+              contentBase64: rawContentBase64,
+              processingStatus: "ready",
+              processingError: cleanupError instanceof Error ? cleanupError.message : "Background cleanup failed.",
+            }).catch(() => undefined);
+
+            toast("The photo was attached, but background cleanup could not finish. The uploaded version will be used.");
+          }
+        })();
+
+        return true;
       }
 
-      const localPreviewUrl = URL.createObjectURL(fileToUpload);
+      const localPreviewUrl = URL.createObjectURL(file);
       replacePreviewUrl(previewSetter, localPreviewUrl);
 
       const storedAsset = await storeRegistrationMediaAsset({
         registrationDraftId,
         mediaKind,
-        fileName: fileToUpload.name,
-        contentType: fileToUpload.type || file.type || "application/octet-stream",
-        contentBase64: await fileToBase64(fileToUpload),
+        fileName: file.name,
+        contentType: file.type || "application/octet-stream",
+        contentBase64: await fileToBase64(file),
       });
 
-      setForm((prev) =>
-        kind === "photo"
-          ? {
-              ...prev,
-              profile_photo_media_id: storedAsset.media_id,
-              profile_photo_path: "",
-              profile_photo_file_name: storedAsset.file_name,
-              profile_photo_revision: String(Date.now()),
-            }
-          : {
-              ...prev,
-              signature_media_id: storedAsset.media_id,
-              signature_path: "",
-              signature_file_name: storedAsset.file_name,
-              signature_revision: String(Date.now()),
-            }
-      );
+      setForm((prev) => ({
+        ...prev,
+        signature_media_id: storedAsset.media_id,
+        signature_path: "",
+        signature_file_name: storedAsset.file_name,
+        signature_revision: String(Date.now()),
+      }));
     } catch (error) {
       replacePreviewUrl(previewSetter, null);
       errorSetter(error instanceof Error ? error.message : `Could not upload ${kind === "photo" ? "the photo" : "the signature"}.`);
