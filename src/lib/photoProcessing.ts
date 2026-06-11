@@ -1,4 +1,6 @@
-const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+import { getApiBaseUrl } from "@/lib/apiBase";
+
+const configuredApiBase = getApiBaseUrl();
 
 export const ACCEPTED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 export const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getApiBaseUrl } from "@/lib/apiBase";
 
 export type RegistrationMediaKind = "profile_photo" | "signature";
 
@@ -19,7 +20,7 @@ export type RegistrationMediaAsset = {
 
 type RegistrationMediaRpcResponse = RegistrationMediaAsset | null;
 const MEDIA_BUCKET = "registration-media";
-const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+const configuredApiBase = getApiBaseUrl();
 
 const callRegistrationMediaRpc = async <T,>(
   functionName: string,

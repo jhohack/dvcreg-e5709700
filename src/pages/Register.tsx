@@ -65,6 +65,7 @@ import {
 } from "@/lib/registrationMedia";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/integrations/supabase/client";
+import { getApiBaseUrl } from "@/lib/apiBase";
 
 const FORM_STORAGE_KEY = "dvcreg-registration-form";
 const VERIFICATION_STORAGE_KEY = "dvcreg-registration-verification";
@@ -78,7 +79,7 @@ const verificationFunctionByPath: Record<string, string> = {
   "send-verification-code.php": "send-verification-code",
   "verify-registration-code.php": "verify-registration-code",
 };
-const verificationApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+const verificationApiBase = getApiBaseUrl();
 
 const initialForm = {
   first_name: "", last_name: "", middle_name: "",

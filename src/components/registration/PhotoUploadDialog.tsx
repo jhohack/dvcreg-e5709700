@@ -96,7 +96,7 @@ const PhotoUploadDialog = ({
   const streamRef = useRef<MediaStream | null>(null);
   const cameraWarmupPromiseRef = useRef<Promise<MediaStream | null> | null>(null);
   const cameraSessionActiveRef = useRef(false);
-  const lastRemoteMediaIdRef = useRef<string | null>(null);
+  const lastRemoteSnapshotRef = useRef<string | null>(null);
   const remoteStartedAtRef = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -307,7 +307,7 @@ const PhotoUploadDialog = ({
   useEffect(() => {
     if (open && tab === "remote") {
       remoteStartedAtRef.current = Date.now();
-      lastRemoteMediaIdRef.current = null;
+      lastRemoteSnapshotRef.current = null;
       return;
     }
 
@@ -345,7 +345,17 @@ const PhotoUploadDialog = ({
 
   useEffect(() => {
     const remoteAsset = remotePhotoQuery.data;
-    if (!remoteAsset?.media_id || remoteAsset.media_id === lastRemoteMediaIdRef.current) {
+    if (!remoteAsset?.media_id) {
+      return;
+    }
+
+    const remoteSnapshotKey = [
+      remoteAsset.media_id,
+      remoteAsset.processing_status ?? "ready",
+      remoteAsset.updated_at ?? remoteAsset.created_at ?? "",
+    ].join(":");
+
+    if (remoteSnapshotKey === lastRemoteSnapshotRef.current) {
       return;
     }
 
@@ -359,7 +369,7 @@ const PhotoUploadDialog = ({
       return;
     }
 
-    lastRemoteMediaIdRef.current = remoteAsset.media_id;
+    lastRemoteSnapshotRef.current = remoteSnapshotKey;
     onRemotePhotoReady(remoteAsset);
     setOpen(false);
     toast.success("Photo received from the other device.");
@@ -375,17 +385,23 @@ const PhotoUploadDialog = ({
       return;
     }
 
+    const remoteSnapshotKey = [
+      remoteAsset.media_id,
+      remoteAsset.processing_status ?? "ready",
+      remoteAsset.updated_at ?? remoteAsset.created_at ?? "",
+    ].join(":");
+
     const startedAt = new Date(remoteAsset.updated_at ?? remoteAsset.created_at ?? "").getTime();
     if (!Number.isFinite(startedAt)) {
       return;
     }
 
     const timeoutId = window.setTimeout(() => {
-      if (lastRemoteMediaIdRef.current === remoteAsset.media_id) {
+      if (lastRemoteSnapshotRef.current === remoteSnapshotKey) {
         return;
       }
 
-      lastRemoteMediaIdRef.current = remoteAsset.media_id;
+      lastRemoteSnapshotRef.current = remoteSnapshotKey;
       onRemotePhotoReady(remoteAsset);
       setOpen(false);
       toast.info("The uploaded version was attached because background cleanup took longer than expected.");

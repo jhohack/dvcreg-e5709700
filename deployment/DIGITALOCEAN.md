@@ -57,6 +57,10 @@ REMBG_MODEL=isnet-general-use
 
 Mark `SMTP_PASSWORD` and `SUPABASE_SERVICE_ROLE_KEY` as secrets.
 
+If you use a custom domain, include both the default `*.ondigitalocean.app` URL and the custom domain in `ALLOWED_ORIGINS`, or the browser will block the PHP API calls.
+
+`VITE_API_BASE_URL` is baked into the frontend during the Docker build, so the Dockerfile already sets it to `/api` for the DigitalOcean service. If you ever change that value, rebuild the image.
+
 If your mailbox is hosted by a provider like Gmail, Resend, cPanel, or another SMTP service, replace `SMTP_HOST` with that provider's server name and use the password or app password they issue for SMTP access.
 
 ## 4. Supabase

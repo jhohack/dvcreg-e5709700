@@ -36,6 +36,9 @@ services:
       - key: MAIL_CODE_TTL_MINUTES
         scope: RUN_TIME
         value: "10"
+      - key: SMTP_TIMEOUT_SECONDS
+        scope: RUN_TIME
+        value: "20"
       - key: VITE_SUPABASE_URL
         scope: RUN_TIME
         value: https://your-project-ref.supabase.co
@@ -45,7 +48,7 @@ services:
         type: SECRET
       - key: ALLOWED_ORIGINS
         scope: RUN_TIME
-        value: https://your-app-url.ondigitalocean.app
+        value: https://your-app-url.ondigitalocean.app,https://your-custom-domain.com
       - key: REMBG_COMMAND
         scope: RUN_TIME
         value: rembg
