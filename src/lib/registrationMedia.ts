@@ -31,6 +31,15 @@ const callRegistrationMediaRpc = async <T,>(
   return data as T;
 };
 
+const isMissingRpcSignatureError = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const message = "message" in error ? String((error as { message?: unknown }).message ?? "") : "";
+  return /could not find the function|function .* does not exist|no function matches/i.test(message);
+};
+
 export const fileToBase64 = async (file: Blob): Promise<string> => {
   const bytes = new Uint8Array(await file.arrayBuffer());
   let binary = "";
@@ -57,15 +66,30 @@ export const storeRegistrationMediaAsset = async (input: {
   processingStatus?: "processing" | "ready" | "error";
   processingError?: string | null;
 }): Promise<RegistrationMediaAsset> => {
-  return await callRegistrationMediaRpc<RegistrationMediaAsset>("upsert_registration_media_asset", {
+  const baseArgs = {
     p_registration_draft_id: input.registrationDraftId,
     p_media_kind: input.mediaKind,
     p_file_name: input.fileName,
     p_content_type: input.contentType,
     p_content_base64: input.contentBase64,
+  };
+
+  const argsWithProcessing = {
+    ...baseArgs,
     p_processing_status: input.processingStatus ?? "ready",
     p_processing_error: input.processingError ?? null,
-  });
+  };
+
+  try {
+    return await callRegistrationMediaRpc<RegistrationMediaAsset>("upsert_registration_media_asset", argsWithProcessing);
+  } catch (error) {
+    // Older database migrations only expose the 5-argument version of the RPC.
+    if (!isMissingRpcSignatureError(error)) {
+      throw error;
+    }
+
+    return await callRegistrationMediaRpc<RegistrationMediaAsset>("upsert_registration_media_asset", baseArgs);
+  }
 };
 
 export const fetchRegistrationMediaAsset = async (mediaId: string): Promise<RegistrationMediaRpcResponse> => {
