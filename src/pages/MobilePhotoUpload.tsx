@@ -14,7 +14,7 @@ import {
   MAX_PHOTO_SIZE_BYTES,
   processPhotoBackground,
 } from "@/lib/photoProcessing";
-import { validateStudentPhoto } from "@/lib/photoValidation";
+import { isRecoverablePhotoValidationError, validateStudentPhoto } from "@/lib/photoValidation";
 
 const MobilePhotoUpload = () => {
   const [searchParams] = useSearchParams();
@@ -78,7 +78,12 @@ const MobilePhotoUpload = () => {
     try {
       const photoValidation = await validateStudentPhoto(file);
       if (!photoValidation.ok) {
-        throw new Error(photoValidation.reason);
+        if (isRecoverablePhotoValidationError(photoValidation.reason)) {
+          console.warn("Photo validation could not decode the image. Uploading the original photo instead.", photoValidation.reason);
+          toast.info("The photo was uploaded, but this browser could not fully decode it. The original image will be used.");
+        } else {
+          throw new Error(photoValidation.reason);
+        }
       }
 
       const rawContentType = file.type || "image/jpeg";

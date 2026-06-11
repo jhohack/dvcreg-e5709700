@@ -39,6 +39,17 @@ const fail = (reason: string): PhotoValidationResult => ({
   reason,
 });
 
+export const isRecoverablePhotoValidationError = (reason: string): boolean => {
+  const normalized = reason.toLowerCase();
+  return (
+    normalized.includes("could not read the photo") ||
+    normalized.includes("could not analyze the photo") ||
+    normalized.includes("could not be decoded") ||
+    normalized.includes("decode") ||
+    normalized.includes("source image")
+  );
+};
+
 const loadImageFromFile = async (file: File): Promise<LoadedPhotoSource> => {
   if (typeof createImageBitmap === "function") {
     try {

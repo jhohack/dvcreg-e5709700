@@ -46,7 +46,7 @@ import {
   normalizeEducationLevel,
 } from "@/lib/academicCatalog";
 import { normalizeFacebookLink } from "@/lib/facebook";
-import { validateStudentPhoto } from "@/lib/photoValidation";
+import { isRecoverablePhotoValidationError, validateStudentPhoto } from "@/lib/photoValidation";
 import {
   ACCEPTED_PHOTO_TYPES,
   MAX_PHOTO_SIZE_BYTES,
@@ -711,7 +711,12 @@ const Register = () => {
       if (kind === "photo") {
         const validation = await validateStudentPhoto(file);
         if (!validation.ok) {
-          throw new Error(validation.reason);
+          if (isRecoverablePhotoValidationError(validation.reason)) {
+            console.warn("Photo validation could not decode the image. Uploading the original photo instead.", validation.reason);
+            toast.info("The photo was uploaded, but this browser could not fully decode it. The original image will be used.");
+          } else {
+            throw new Error(validation.reason);
+          }
         }
       }
 
