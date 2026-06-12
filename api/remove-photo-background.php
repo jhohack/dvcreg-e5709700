@@ -101,7 +101,7 @@ function flatten_png_to_jpeg(string $pngPath): string
     imagecopy($canvas, $source, 0, 0, 0, 0, $width, $height);
 
     $jpegPath = $pngPath . '.jpg';
-    $saved = imagejpeg($canvas, $jpegPath, 90);
+    $saved = imagejpeg($canvas, $jpegPath, 97);
 
     imagedestroy($source);
     imagedestroy($canvas);

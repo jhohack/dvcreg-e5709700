@@ -323,20 +323,6 @@ function supabase_request(string $method, string $table, array $query = [], ?arr
     return http_json_request($method, $url, [...$baseHeaders, ...$headers], $body);
 }
 
-function supabase_rpc(string $functionName, array $body): array
-{
-    $baseUrl = rtrim(require_env('VITE_SUPABASE_URL'), '/');
-    $serviceRoleKey = require_env('SUPABASE_SERVICE_ROLE_KEY');
-    $url = "{$baseUrl}/rest/v1/rpc/{$functionName}";
-    $headers = [
-        "apikey: {$serviceRoleKey}",
-        "Authorization: Bearer {$serviceRoleKey}",
-        'Accept: application/json',
-    ];
-
-    return http_json_request('POST', $url, $headers, $body);
-}
-
 function supabase_insert(string $table, array $row): array
 {
     return supabase_request('POST', $table, [], $row, ['Prefer: return=representation']);
@@ -700,7 +686,7 @@ function format_email_address(string $email, ?string $name = null): string
         return sprintf('<%s>', $address);
     }
 
-    return sprintf('%s <%s>', encode_mail_header(trim($name)), $address);
+    return sprintf('%s <%s>', encode_mail_header(trim($name)), $address . '>');
 }
 
 function normalize_mail_body(string $body): string
