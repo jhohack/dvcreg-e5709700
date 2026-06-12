@@ -11,7 +11,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM php:8.3-apache
+FROM php:8.3.31-apache
 
 ENV PORT=8080 \
     REMBG_COMMAND=rembg \
