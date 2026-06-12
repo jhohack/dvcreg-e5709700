@@ -1,6 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { getApiBaseUrl } from "@/lib/apiBase";
-
 export type RegistrationMediaKind = "profile_photo" | "signature";
 
 export type RegistrationMediaAsset = {
@@ -20,7 +18,6 @@ export type RegistrationMediaAsset = {
 
 type RegistrationMediaRpcResponse = RegistrationMediaAsset | null;
 const MEDIA_BUCKET = "registration-media";
-const configuredApiBase = getApiBaseUrl();
 
 const callRegistrationMediaRpc = async <T,>(
   functionName: string,
@@ -72,43 +69,6 @@ export const buildRegistrationMediaDataUrl = (asset: Pick<RegistrationMediaAsset
   return `data:${asset.content_type};base64,${base64}`;
 };
 
-const storeRegistrationMediaAssetViaPhpApi = async (input: {
-  registrationDraftId: string;
-  mediaKind: RegistrationMediaKind;
-  fileName: string;
-  contentType: string;
-  contentBase64: string;
-  processingStatus?: "processing" | "ready" | "error";
-  processingError?: string | null;
-}): Promise<RegistrationMediaAsset> => {
-  if (!configuredApiBase) {
-    throw new Error("Media upload service is unavailable right now.");
-  }
-
-  let response: Response;
-  try {
-    response = await fetch(`${configuredApiBase}/upload-registration-media.php`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(input),
-    });
-  } catch {
-    throw new Error("Media upload service is unavailable right now.");
-  }
-
-  const data = await response.json().catch(() => null) as { message?: unknown; asset?: RegistrationMediaAsset } | null;
-  if (!response.ok || !data?.asset) {
-    const message = typeof data?.message === "string" && data.message.trim()
-      ? data.message.trim()
-      : "Could not upload the file.";
-    throw new Error(message);
-  }
-
-  return data.asset;
-};
-
 export const storeRegistrationMediaAsset = async (input: {
   registrationDraftId: string;
   mediaKind: RegistrationMediaKind;
@@ -136,16 +96,10 @@ export const storeRegistrationMediaAsset = async (input: {
     return await callRegistrationMediaRpc<RegistrationMediaAsset>("upsert_registration_media_asset", argsWithProcessing);
   } catch (error) {
     if (isMissingRpcSignatureError(error)) {
-      try {
-        return await callRegistrationMediaRpc<RegistrationMediaAsset>("upsert_registration_media_asset", baseArgs);
-      } catch (baseError) {
-        console.warn("Registration media RPC fallback failed. Trying PHP API upload.", baseError);
-      }
-    } else {
-      console.warn("Registration media RPC upload failed. Trying PHP API upload.", error);
+      return await callRegistrationMediaRpc<RegistrationMediaAsset>("upsert_registration_media_asset", baseArgs);
     }
 
-    return await storeRegistrationMediaAssetViaPhpApi(input);
+    throw error;
   }
 };
 
