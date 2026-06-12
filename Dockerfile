@@ -11,7 +11,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM php:8.3-apache
+FROM php:8.3-cli
 
 ENV PORT=8080 \
     REMBG_COMMAND=rembg \
@@ -30,7 +30,6 @@ RUN apt-get update \
         python3-venv \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j"$(nproc)" gd curl \
-    && a2enmod rewrite \
     && python3 -m venv /opt/rembg \
     && /opt/rembg/bin/pip install --no-cache-dir --upgrade pip \
     && /opt/rembg/bin/pip install --no-cache-dir "rembg[cpu]" \
@@ -40,12 +39,10 @@ RUN apt-get update \
 
 COPY --from=frontend-build /app/dist/ /var/www/html/
 COPY api/ /var/www/html/api/
-COPY deployment/apache/000-default.conf.template /etc/apache2/sites-available/000-default.conf.template
-COPY deployment/apache/start-app.sh /usr/local/bin/start-app.sh
+COPY deployment/php-router.php /var/www/html/router.php
 
-RUN chmod +x /usr/local/bin/start-app.sh \
-    && chown -R www-data:www-data /var/www/html
+RUN chown -R www-data:www-data /var/www/html
 
 EXPOSE 8080
 
-CMD ["/usr/local/bin/start-app.sh"]
+CMD ["sh", "-c", "php -S 0.0.0.0:${PORT:-8080} -t /var/www/html /var/www/html/router.php"]
