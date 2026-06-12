@@ -9,6 +9,14 @@ const PHOTO_CLEANUP_MAX_SIDE = 1024;
 const PHOTO_CLEANUP_JPEG_QUALITY = 0.84;
 const photoCleanupServiceUnavailableMessage = "Photo cleanup service is unavailable right now. Please try again in a moment.";
 
+const shouldUseServerPhotoCleanup = () => {
+  if (!configuredApiBase || typeof window === "undefined") {
+    return false;
+  }
+
+  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+};
+
 export const buildProcessedPhotoFileName = (originalFileName: string) => {
   const trimmedName = originalFileName.trim();
   const lastDotIndex = trimmedName.lastIndexOf(".");
@@ -224,7 +232,7 @@ const removePhotoBackgroundInBrowser = async (file: File): Promise<File> => {
 export const processPhotoBackground = async (file: File): Promise<File> => {
   const cleanupInput = await preparePhotoForCleanup(file);
 
-  if (configuredApiBase) {
+  if (shouldUseServerPhotoCleanup()) {
     try {
       const cleanedBlob = await postBinaryToPhpApi("remove-photo-background.php", cleanupInput);
       return new File([cleanedBlob], buildProcessedPhotoFileName(file.name), {
