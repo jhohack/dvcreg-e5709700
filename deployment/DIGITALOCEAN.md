@@ -1,21 +1,19 @@
 # DigitalOcean Deployment
 
-This project is prepared for DigitalOcean App Platform as one Docker service:
+This project now deploys best to DigitalOcean App Platform as a frontend-only static site:
 
-- Apache serves the Vite build from `/`.
-- PHP serves the API files from `/api`.
-- `rembg` is installed in the container for server-side photo background cleanup.
-- Supabase remains the database/storage provider.
+- DigitalOcean serves the built Vite app from `dist`.
+- Supabase handles storage, registration persistence, and Edge Functions.
+- Photo cleanup runs in the browser in production.
+- The local PHP API remains optional for local development only.
 
 ## 1. Push The Repo
 
 Commit and push these deployment files to GitHub:
 
-- `Dockerfile`
-- `.dockerignore`
-- `deployment/apache/000-default.conf.template`
-- `deployment/apache/start-app.sh`
 - `deployment/digitalocean-app.yaml.example`
+- `deployment/DIGITALOCEAN.md`
+- the normal frontend source files under `src/`
 
 ## 2. Create The App
 
@@ -23,57 +21,43 @@ In DigitalOcean, create an App Platform app from the GitHub repository.
 
 Recommended settings:
 
-- Resource type: `Service`
-- Build method: `Dockerfile`
-- Dockerfile path: `Dockerfile`
-- HTTP port: `8080`
+- Resource type: `Static Site`
+- Build command: `npm ci && npm run build`
+- Output directory: `dist`
+- Catch-all document: `index.html`
 - Region: `Singapore` (`sgp`) if most users are in the Philippines
-- Instance size: start with `apps-s-1vcpu-1gb`; use a larger size if background cleanup is slow
 
 You can also copy `deployment/digitalocean-app.yaml.example` into DigitalOcean's app spec editor and replace the placeholders.
 
 ## 3. Environment Variables
 
-The Dockerfile already builds the frontend with `VITE_API_BASE_URL=/api`, so the deployed frontend will call the PHP API on the same DigitalOcean app.
-
-Set these runtime variables:
+Set this build-time variable on the static site:
 
 ```env
-SMTP_HOST=your_smtp_host
-SMTP_PORT=587
-SMTP_USERNAME=dvcregistrar@dvci-edu.com
-SMTP_PASSWORD=your_smtp_password
-SMTP_SECURE=tls
-MAIL_FROM_ADDRESS=dvcregistrar@dvci-edu.com
-MAIL_FROM_NAME=DVC Registration
-MAIL_CODE_TTL_MINUTES=10
-SMTP_TIMEOUT_SECONDS=20
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-ALLOWED_ORIGINS=https://your-app-url.ondigitalocean.app,https://your-custom-domain.com
-REMBG_COMMAND=rembg
-REMBG_MODEL=isnet-general-use
+VITE_API_BASE_URL=
 ```
 
-Mark `SMTP_PASSWORD` and `SUPABASE_SERVICE_ROLE_KEY` as secrets.
-
-If you use a custom domain, include both the default `*.ondigitalocean.app` URL and the custom domain in `ALLOWED_ORIGINS`, or the browser will block the PHP API calls.
-
-`VITE_API_BASE_URL` is baked into the frontend during the Docker build, so the Dockerfile already sets it to `/api` for the DigitalOcean service. If you ever change that value, rebuild the image.
-
-If your mailbox is hosted by a provider like Gmail, Resend, cPanel, or another SMTP service, replace `SMTP_HOST` with that provider's server name and use the password or app password they issue for SMTP access.
+This keeps the deployed frontend from trying to call the local PHP API.
 
 ## 4. Supabase
 
-Make sure the Supabase migrations have been applied and the Edge Functions are deployed:
+Make sure the Supabase migrations are applied, the verification functions are deployed, and the SMTP secrets exist in Supabase:
 
 ```sh
 supabase db push
 supabase functions deploy send-verification-code
 supabase functions deploy verify-registration-code
+supabase secrets set SMTP_HOST=your_smtp_host
+supabase secrets set SMTP_PORT=587
+supabase secrets set SMTP_USERNAME=your_smtp_username
+supabase secrets set SMTP_PASSWORD=your_smtp_password
+supabase secrets set SMTP_SECURE=tls
+supabase secrets set MAIL_FROM_ADDRESS=your_from_address
+supabase secrets set MAIL_FROM_NAME="DVC Registration"
+supabase secrets set MAIL_CODE_TTL_MINUTES=10
 ```
 
-The current frontend uses Supabase Edge Functions for email verification. The PHP API is used by the deployed frontend for photo background cleanup.
+If you use a custom domain for the app, add that domain to any Supabase storage or CORS allow-lists you maintain.
 
 ## 5. Smoke Tests
 
@@ -83,17 +67,9 @@ After deployment, open:
 https://your-app-url.ondigitalocean.app/
 ```
 
-Then test the PHP API:
-
-```text
-https://your-app-url.ondigitalocean.app/api/remove-photo-background.php
-```
-
-A browser GET request should return JSON with a `405` method error. That confirms PHP is being served.
-
 Finally, submit a test registration with a photo and verify:
 
 - the page loads after refresh on nested routes
-- photo cleanup completes
+- photo upload completes
 - verification email arrives
 - the registration appears in Supabase

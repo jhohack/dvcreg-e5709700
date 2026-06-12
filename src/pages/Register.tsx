@@ -80,6 +80,13 @@ const verificationFunctionByPath: Record<string, string> = {
   "verify-registration-code.php": "verify-registration-code",
 };
 const verificationApiBase = getApiBaseUrl();
+const shouldUsePhpVerificationApi = () => {
+  if (!verificationApiBase || typeof window === "undefined") {
+    return false;
+  }
+
+  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+};
 
 const initialForm = {
   first_name: "", last_name: "", middle_name: "",
@@ -463,12 +470,21 @@ const postJsonToPhpApi = async <T,>(path: string, body: unknown): Promise<T> => 
 };
 
 const postJson = async <T,>(path: string, body: unknown): Promise<T> => {
-  if (verificationApiBase) {
-    return await postJsonToPhpApi<T>(path, body);
+  if (verificationFunctionByPath[path]) {
+    if (!shouldUsePhpVerificationApi()) {
+      return await postJsonToEdgeFunction<T>(path, body);
+    }
+
+    try {
+      return await postJsonToPhpApi<T>(path, body);
+    } catch (phpError) {
+      console.warn("PHP verification API failed locally. Falling back to Supabase Edge Function.", phpError);
+      return await postJsonToEdgeFunction<T>(path, body);
+    }
   }
 
-  if (verificationFunctionByPath[path]) {
-    return await postJsonToEdgeFunction<T>(path, body);
+  if (verificationApiBase) {
+    return await postJsonToPhpApi<T>(path, body);
   }
 
   throw new Error("Unsupported verification request.");
