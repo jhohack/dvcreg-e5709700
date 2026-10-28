@@ -366,7 +366,23 @@ function normalize_name_part(mixed $value): string
 
 function normalize_middle_name_part(mixed $value): string
 {
+    $raw = strtoupper(trim((string) $value));
+    if (in_array($raw, ['N/A', 'NA', 'NONE', '-'], true)) {
+        return '';
+    }
+
     return str_replace('.', '', normalize_name_part($value));
+}
+
+function normalize_suffix(mixed $value): string
+{
+    $normalized = strtoupper(rtrim(trim((string) $value), '.'));
+    return match ($normalized) {
+        'JR' => 'jr',
+        'SR' => 'sr',
+        'II', 'III', 'IV', 'V' => strtolower($normalized),
+        default => '',
+    };
 }
 
 function middle_name_matches(string $storedMiddleName, string $inputMiddleName): bool
@@ -393,10 +409,34 @@ function normalize_birthdate(mixed $value): string
     return $timestamp === false ? $raw : gmdate('Y-m-d', $timestamp);
 }
 
-function duplicate_registration_exists_in_table(string $table, string $firstName, string $middleName, string $lastName, string $birthdate): bool
+function valid_student_birthdate(mixed $value, int $minimumAge = 15): bool
+{
+    $birthdate = trim((string) $value);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $birthdate)) {
+        return false;
+    }
+
+    $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $birthdate, new DateTimeZone('UTC'));
+    $errors = DateTimeImmutable::getLastErrors();
+    if ($parsed === false || $parsed->format('Y-m-d') !== $birthdate || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+        return false;
+    }
+
+    $cutoff = (new DateTimeImmutable('today', new DateTimeZone('Asia/Manila')))->modify("-{$minimumAge} years");
+    return $parsed <= $cutoff;
+}
+
+function assert_valid_student_birthdate(array $payload): void
+{
+    if (!valid_student_birthdate($payload['date_of_birth'] ?? null)) {
+        error_response('Student must be at least 15 years old. Please check the birth year.', 422);
+    }
+}
+
+function duplicate_registration_exists_in_table(string $table, string $firstName, string $middleName, string $lastName, string $suffix, string $birthdate): bool
 {
     $response = supabase_request('GET', $table, [
-        'select' => 'id,first_name,middle_name,last_name,date_of_birth',
+        'select' => 'id,first_name,middle_name,last_name,suffix,date_of_birth',
         'first_name' => 'ilike.' . $firstName,
         'last_name' => 'ilike.' . $lastName,
         'date_of_birth' => 'eq.' . $birthdate,
@@ -416,6 +456,7 @@ function duplicate_registration_exists_in_table(string $table, string $firstName
             normalize_name_part($row['first_name'] ?? '') === $firstName
             && middle_name_matches(normalize_middle_name_part($row['middle_name'] ?? ''), $middleName)
             && normalize_name_part($row['last_name'] ?? '') === $lastName
+            && normalize_suffix($row['suffix'] ?? '') === $suffix
             && normalize_birthdate($row['date_of_birth'] ?? '') === $birthdate
         ) {
             return true;
@@ -430,14 +471,15 @@ function admission_full_name_exists(array $payload): bool
     $firstName = normalize_name_part($payload['first_name'] ?? '');
     $middleName = normalize_middle_name_part($payload['middle_name'] ?? '');
     $lastName = normalize_name_part($payload['last_name'] ?? '');
+    $suffix = normalize_suffix($payload['suffix'] ?? '');
     $birthdate = normalize_birthdate($payload['date_of_birth'] ?? '');
 
-    if ($firstName === '' || $middleName === '' || $lastName === '' || $birthdate === '') {
+    if ($firstName === '' || $lastName === '' || $birthdate === '') {
         return false;
     }
 
     foreach (['admission', 'student_information'] as $table) {
-        if (duplicate_registration_exists_in_table($table, $firstName, $middleName, $lastName, $birthdate)) {
+        if (duplicate_registration_exists_in_table($table, $firstName, $middleName, $lastName, $suffix, $birthdate)) {
             return true;
         }
     }
@@ -480,6 +522,9 @@ function is_duplicate_full_name_error(array|string|null $body): bool
 
 function insert_admission_payloads(string $id, array $payload, array $legacyPayload): void
 {
+    assert_valid_student_birthdate($payload);
+    assert_valid_student_birthdate($legacyPayload);
+
     $payload['id'] = $id;
     $legacyPayload['id'] = $id;
 

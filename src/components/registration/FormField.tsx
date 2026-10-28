@@ -27,6 +27,7 @@ interface TextFieldProps extends BaseProps {
   onChange: (val: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  readOnly?: boolean;
   error?: string;
 }
 
@@ -40,10 +41,11 @@ interface SelectFieldProps extends BaseProps {
 interface DateFieldProps extends BaseProps {
   value: Date | undefined;
   onChange: (val: Date | undefined) => void;
+  maxDate?: Date;
 }
 
 export const TextField = ({
-  label, name, required, type = "text", value, onChange, placeholder, disabled, error, className,
+  label, name, required, type = "text", value, onChange, placeholder, disabled, readOnly, error, className,
 }: TextFieldProps) => (
   <div className={cn("space-y-1.5", className)}>
     <Label htmlFor={name} className="text-sm font-medium text-foreground">
@@ -58,6 +60,7 @@ export const TextField = ({
       placeholder={placeholder || label}
       required={required}
       disabled={disabled}
+      readOnly={readOnly}
       aria-invalid={Boolean(error)}
       aria-describedby={error ? `${name}-error` : undefined}
       className={cn("h-10 bg-background", error && "border-destructive focus-visible:ring-destructive")}
@@ -97,7 +100,7 @@ export const SelectField = ({
 );
 
 export const DateField = ({
-  label, name, required, value, onChange, className,
+  label, name, required, value, onChange, maxDate, className,
 }: DateFieldProps) => (
   <div className={cn("space-y-1.5", className)}>
     <Label htmlFor={name} className="text-sm font-medium text-foreground">
@@ -123,7 +126,8 @@ export const DateField = ({
           onSelect={onChange}
           captionLayout="dropdown-buttons"
           fromYear={1950}
-          toYear={new Date().getFullYear()}
+          toYear={(maxDate ?? new Date()).getFullYear()}
+          disabled={maxDate ? { after: maxDate } : undefined}
           initialFocus
           className="p-3 pointer-events-auto"
         />

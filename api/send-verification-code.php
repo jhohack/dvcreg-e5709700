@@ -20,6 +20,9 @@ if (!is_array($payload) || !is_array($legacyPayload)) {
     error_response('Missing registration payload.', 422);
 }
 
+assert_valid_student_birthdate($payload);
+assert_valid_student_birthdate($legacyPayload);
+
 if (admission_full_name_exists($payload)) {
     error_response('A registration with the same first name, middle name, and last name already exists.', 409);
 }

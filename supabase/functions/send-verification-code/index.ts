@@ -7,6 +7,7 @@ import {
   hashVerificationCode,
   normalizedEmail,
   validEmail,
+  validStudentBirthdate,
 } from "../_shared/verification.ts"
 import { sendEmail } from "../_shared/smtp.ts"
 
@@ -31,6 +32,11 @@ Deno.serve(async (request) => {
 
     if (!payload || typeof payload !== "object" || Array.isArray(payload) || !legacyPayload || typeof legacyPayload !== "object" || Array.isArray(legacyPayload)) {
       return errorResponse("Missing registration payload.", 422)
+    }
+
+    if (!validStudentBirthdate((payload as Record<string, unknown>).date_of_birth) ||
+      !validStudentBirthdate((legacyPayload as Record<string, unknown>).date_of_birth)) {
+      return errorResponse("Student must be at least 15 years old. Please check the birth year.", 422)
     }
 
     const ttlMinutes = Math.max(1, intEnv("MAIL_CODE_TTL_MINUTES", 10))

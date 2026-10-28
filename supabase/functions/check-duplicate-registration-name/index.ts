@@ -19,6 +19,7 @@ Deno.serve(async (request) => {
       first_name: input.firstName,
       middle_name: input.middleName,
       last_name: input.lastName,
+      suffix: input.suffix,
       date_of_birth: input.dateOfBirth,
     }
 

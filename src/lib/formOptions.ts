@@ -26,6 +26,8 @@ export const religionOptions = [
 
 export const genderOptions = ["Male", "Female", "Other"];
 
+export const suffixOptions = ["None", "Jr.", "Sr.", "II", "III", "IV", "V"];
+
 export const civilStatusOptions = [
   "Single",
   "Married",

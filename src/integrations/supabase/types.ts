@@ -24,6 +24,11 @@ export type Database = {
           contact: string | null
           course: string | null
           current_address: string | null
+          current_barangay: string | null
+          current_city_municipality: string | null
+          current_postal_code: string | null
+          current_province: string | null
+          current_street_address: string | null
           date_created: string
           date_of_birth: string | null
           department: string
@@ -64,6 +69,11 @@ export type Database = {
           parent_guardian_contact: string | null
           parent_guardian_relation: string | null
           parent_marital_status: string | null
+          permanent_barangay: string | null
+          permanent_city_municipality: string | null
+          permanent_postal_code: string | null
+          permanent_province: string | null
+          permanent_street_address: string | null
           place_of_birth: string | null
           religion: string | null
           review_notes: string | null
@@ -79,6 +89,7 @@ export type Database = {
           semester: string | null
           shs_track: string | null
           spouse_name: string | null
+          suffix: string | null
           student_information_id: string | null
           student_lrn: string | null
           signature_file_name: string | null
@@ -98,6 +109,11 @@ export type Database = {
           contact?: string | null
           course?: string | null
           current_address?: string | null
+          current_barangay?: string | null
+          current_city_municipality?: string | null
+          current_postal_code?: string | null
+          current_province?: string | null
+          current_street_address?: string | null
           date_created?: string
           date_of_birth?: string | null
           department?: string
@@ -138,6 +154,11 @@ export type Database = {
           parent_guardian_contact?: string | null
           parent_guardian_relation?: string | null
           parent_marital_status?: string | null
+          permanent_barangay?: string | null
+          permanent_city_municipality?: string | null
+          permanent_postal_code?: string | null
+          permanent_province?: string | null
+          permanent_street_address?: string | null
           place_of_birth?: string | null
           religion?: string | null
           review_notes?: string | null
@@ -153,6 +174,7 @@ export type Database = {
           semester?: string | null
           shs_track?: string | null
           spouse_name?: string | null
+          suffix?: string | null
           student_information_id?: string | null
           student_lrn?: string | null
           signature_file_name?: string | null
@@ -172,6 +194,11 @@ export type Database = {
           contact?: string | null
           course?: string | null
           current_address?: string | null
+          current_barangay?: string | null
+          current_city_municipality?: string | null
+          current_postal_code?: string | null
+          current_province?: string | null
+          current_street_address?: string | null
           date_created?: string
           date_of_birth?: string | null
           department?: string
@@ -212,6 +239,11 @@ export type Database = {
           parent_guardian_contact?: string | null
           parent_guardian_relation?: string | null
           parent_marital_status?: string | null
+          permanent_barangay?: string | null
+          permanent_city_municipality?: string | null
+          permanent_postal_code?: string | null
+          permanent_province?: string | null
+          permanent_street_address?: string | null
           place_of_birth?: string | null
           religion?: string | null
           review_notes?: string | null
@@ -227,6 +259,7 @@ export type Database = {
           semester?: string | null
           shs_track?: string | null
           spouse_name?: string | null
+          suffix?: string | null
           student_information_id?: string | null
           student_lrn?: string | null
           signature_file_name?: string | null
@@ -1091,6 +1124,11 @@ export type Database = {
           contact: string | null
           course: string | null
           current_address: string | null
+          current_barangay: string | null
+          current_city_municipality: string | null
+          current_postal_code: string | null
+          current_province: string | null
+          current_street_address: string | null
           date_created: string
           date_of_birth: string | null
           department: string | null
@@ -1131,6 +1169,11 @@ export type Database = {
           parent_guardian_contact: string | null
           parent_guardian_relation: string | null
           parent_marital_status: string | null
+          permanent_barangay: string | null
+          permanent_city_municipality: string | null
+          permanent_postal_code: string | null
+          permanent_province: string | null
+          permanent_street_address: string | null
           place_of_birth: string | null
           religion: string | null
           sec_address: string | null
@@ -1143,6 +1186,7 @@ export type Database = {
           semester: string | null
           shs_track: string | null
           spouse_name: string | null
+          suffix: string | null
           student_lrn: string | null
           signature_file_name: string | null
           signature_path: string | null
@@ -1160,6 +1204,11 @@ export type Database = {
           contact?: string | null
           course?: string | null
           current_address?: string | null
+          current_barangay?: string | null
+          current_city_municipality?: string | null
+          current_postal_code?: string | null
+          current_province?: string | null
+          current_street_address?: string | null
           date_created?: string
           date_of_birth?: string | null
           department?: string | null
@@ -1200,6 +1249,11 @@ export type Database = {
           parent_guardian_contact?: string | null
           parent_guardian_relation?: string | null
           parent_marital_status?: string | null
+          permanent_barangay?: string | null
+          permanent_city_municipality?: string | null
+          permanent_postal_code?: string | null
+          permanent_province?: string | null
+          permanent_street_address?: string | null
           place_of_birth?: string | null
           religion?: string | null
           sec_address?: string | null
@@ -1212,6 +1266,7 @@ export type Database = {
           semester?: string | null
           shs_track?: string | null
           spouse_name?: string | null
+          suffix?: string | null
           student_lrn?: string | null
           signature_file_name?: string | null
           signature_path?: string | null
@@ -1229,6 +1284,11 @@ export type Database = {
           contact?: string | null
           course?: string | null
           current_address?: string | null
+          current_barangay?: string | null
+          current_city_municipality?: string | null
+          current_postal_code?: string | null
+          current_province?: string | null
+          current_street_address?: string | null
           date_created?: string
           date_of_birth?: string | null
           department?: string | null
@@ -1269,6 +1329,11 @@ export type Database = {
           parent_guardian_contact?: string | null
           parent_guardian_relation?: string | null
           parent_marital_status?: string | null
+          permanent_barangay?: string | null
+          permanent_city_municipality?: string | null
+          permanent_postal_code?: string | null
+          permanent_province?: string | null
+          permanent_street_address?: string | null
           place_of_birth?: string | null
           religion?: string | null
           sec_address?: string | null
@@ -1281,6 +1346,7 @@ export type Database = {
           semester?: string | null
           shs_track?: string | null
           spouse_name?: string | null
+          suffix?: string | null
           student_lrn?: string | null
           signature_file_name?: string | null
           signature_path?: string | null
@@ -1946,6 +2012,16 @@ export type Database = {
         Args: { legacy_contact: string; primary_email: string }
         Returns: string
       }
+      registration_full_name_exists: {
+        Args: {
+          p_date_of_birth: string
+          p_first_name: string
+          p_last_name: string
+          p_middle_name: string
+          p_suffix: string
+        }
+        Returns: boolean
+      }
       review_admission: {
         Args: {
           admission_id_input: string
@@ -2014,6 +2090,7 @@ export type Database = {
           semester: string | null
           shs_track: string | null
           spouse_name: string | null
+          suffix: string | null
           student_information_id: string | null
           student_lrn: string | null
           tribe: string | null

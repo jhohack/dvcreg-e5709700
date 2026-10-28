@@ -30,6 +30,38 @@ export function validEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
+export function validStudentBirthdate(value: unknown, minimumAge = 15, today = new Date()): boolean {
+  const birthdate = String(value ?? "").trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthdate)) {
+    return false
+  }
+
+  const parsed = new Date(`${birthdate}T00:00:00.000Z`)
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== birthdate) {
+    return false
+  }
+
+  const manilaDateParts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(today)
+  const part = (type: "year" | "month" | "day") =>
+    Number(manilaDateParts.find((item) => item.type === type)?.value)
+  const year = part("year")
+  const month = part("month")
+  const day = part("day")
+  const cutoff = new Date(Date.UTC(year - minimumAge, month - 1, day))
+  return parsed <= cutoff
+}
+
+export function assertValidStudentBirthdate(payload: Record<string, unknown>): void {
+  if (!validStudentBirthdate(payload.date_of_birth)) {
+    throw new Error("Student must be at least 15 years old. Please check the birth year.")
+  }
+}
+
 export function generateVerificationCode(): string {
   const values = new Uint32Array(1)
   crypto.getRandomValues(values)
@@ -75,7 +107,17 @@ function normalizeNamePart(value: unknown): string {
 }
 
 function normalizeMiddleNamePart(value: unknown): string {
+  const raw = String(value ?? "").trim().toUpperCase()
+  if (["N/A", "NA", "NONE", "-"].includes(raw)) {
+    return ""
+  }
+
   return normalizeNamePart(value).replaceAll(".", "")
+}
+
+function normalizeSuffix(value: unknown): string {
+  const normalized = String(value ?? "").trim().replace(/\.$/, "").toUpperCase()
+  return ["JR", "SR", "II", "III", "IV", "V"].includes(normalized) ? normalized.toLowerCase() : ""
 }
 
 function middleNameMatches(storedMiddleName: string, inputMiddleName: string): boolean {
@@ -101,16 +143,17 @@ export async function admissionFullNameExists(
   const firstName = normalizeNamePart(payload.first_name)
   const middleName = normalizeMiddleNamePart(payload.middle_name)
   const lastName = normalizeNamePart(payload.last_name)
+  const suffix = normalizeSuffix(payload.suffix)
   const birthdate = normalizeBirthdate(payload.date_of_birth)
 
-  if (!firstName || !middleName || !lastName || !birthdate) {
+  if (!firstName || !lastName || !birthdate) {
     return false
   }
 
   const fullNameExistsInTable = async (table: "admission" | "student_information") => {
     const { data, error } = await client
       .from(table)
-      .select("id, first_name, middle_name, last_name, date_of_birth")
+      .select("id, first_name, middle_name, last_name, suffix, date_of_birth")
       .ilike("first_name", firstName)
       .ilike("last_name", lastName)
       .eq("date_of_birth", birthdate)
@@ -124,6 +167,7 @@ export async function admissionFullNameExists(
       normalizeNamePart(row.first_name) === firstName &&
       middleNameMatches(normalizeMiddleNamePart(row.middle_name), middleName) &&
       normalizeNamePart(row.last_name) === lastName &&
+      normalizeSuffix(row.suffix) === suffix &&
       normalizeBirthdate(row.date_of_birth) === birthdate
     )
   }
@@ -162,6 +206,9 @@ export async function insertAdmissionPayloads(
   payload: Record<string, unknown>,
   legacyPayload: Record<string, unknown>,
 ): Promise<void> {
+  assertValidStudentBirthdate(payload)
+  assertValidStudentBirthdate(legacyPayload)
+
   const primaryPayload = { ...payload, id }
   const fallbackPayload = { ...legacyPayload, id }
 

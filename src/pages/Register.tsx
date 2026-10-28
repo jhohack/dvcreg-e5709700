@@ -36,7 +36,7 @@ import { TextField, SelectField, DateField, SchoolYearField } from "@/components
 import {
   genderOptions, civilStatusOptions, vaccinationStatusOptions,
   parentMaritalStatusOptions, religionOptions, tribeOptions,
-  incomeSourceOptions, monthlyIncomeOptions,
+  incomeSourceOptions, monthlyIncomeOptions, suffixOptions,
 } from "@/lib/formOptions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { nationalityOptions } from "@/lib/nationalities";
@@ -66,6 +66,9 @@ import {
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/integrations/supabase/client";
 import { getApiBaseUrl } from "@/lib/apiBase";
+import { calculateAge, isValidStudentBirthdate, latestValidBirthdate, MIN_STUDENT_AGE } from "@/lib/student-age";
+import { hasFullMiddleName, isValidMiddleNameChoice, normalizeOptionalMiddleName } from "@/lib/middle-name";
+import { formatAddress, hasRequiredAddressComponents, type AddressComponents } from "@/lib/address";
 
 const FORM_STORAGE_KEY = "dvcreg-registration-form";
 const VERIFICATION_STORAGE_KEY = "dvcreg-registration-verification";
@@ -89,12 +92,15 @@ const shouldUsePhpVerificationApi = () => {
 };
 
 const initialForm = {
-  first_name: "", last_name: "", middle_name: "",
+  first_name: "", last_name: "", middle_name: "", has_no_middle_name: false, suffix: "None",
   date_of_birth: undefined as Date | undefined,
   age: "", place_of_birth: "", gender: "", civil_status: "",
   spouse_name: "", nationality: "Filipino", religion: "", religion_other: "", tribe: "", tribe_other: "",
   vaccination_status: "",
-  address: "", current_address: "", same_as_permanent_address: false, contact: "", email: "", facebook_link: "",
+  address: "", current_address: "", same_as_permanent_address: false,
+  permanent_street_address: "", permanent_barangay: "", permanent_city_municipality: "", permanent_province: "", permanent_postal_code: "",
+  current_street_address: "", current_barangay: "", current_city_municipality: "", current_province: "", current_postal_code: "",
+  contact: "", email: "", facebook_link: "",
   profile_photo_media_id: "",
   profile_photo_path: "", profile_photo_file_name: "",
   profile_photo_revision: "",
@@ -144,7 +150,6 @@ const MEDIA_BUCKET = "registration-media";
 const DRAFT_STORAGE_KEY = "dvcreg-registration-draft-id";
 const ACCEPTED_MEDIA_TYPES = ACCEPTED_PHOTO_TYPES;
 const MAX_MEDIA_SIZE_BYTES = MAX_PHOTO_SIZE_BYTES;
-const MIN_STUDENT_AGE = 15;
 const MIDDLE_NAME_INITIAL_ERROR = "Middle name must be a full word, not a single letter or initial.";
 
 const createRegistrationDraftId = () => {
@@ -240,6 +245,11 @@ const restoreForm = (): RegistrationForm => {
       ...initialForm,
       ...parsed,
       current_address: parsed.same_as_permanent_address ? parsed.address ?? "" : parsed.current_address ?? "",
+      current_street_address: parsed.same_as_permanent_address ? parsed.permanent_street_address ?? "" : parsed.current_street_address ?? "",
+      current_barangay: parsed.same_as_permanent_address ? parsed.permanent_barangay ?? "" : parsed.current_barangay ?? "",
+      current_city_municipality: parsed.same_as_permanent_address ? parsed.permanent_city_municipality ?? "" : parsed.current_city_municipality ?? "",
+      current_province: parsed.same_as_permanent_address ? parsed.permanent_province ?? "" : parsed.current_province ?? "",
+      current_postal_code: parsed.same_as_permanent_address ? parsed.permanent_postal_code ?? "" : parsed.current_postal_code ?? "",
       date_of_birth: parsed.date_of_birth ? new Date(parsed.date_of_birth) : undefined,
     };
   } catch {
@@ -276,23 +286,23 @@ const formatLocalDate = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const calculateAge = (birthdate: Date, today = new Date()) => {
-  let age = today.getFullYear() - birthdate.getFullYear();
-  const monthDelta = today.getMonth() - birthdate.getMonth();
-  if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < birthdate.getDate())) {
-    age--;
-  }
-  return age;
-};
+const normalizedSuffix = (suffix: string) => suffix === "None" ? null : suffix;
 
-const isValidStudentAge = (birthdate: Date) => calculateAge(birthdate) >= MIN_STUDENT_AGE;
+const permanentAddressFrom = (form: RegistrationForm): AddressComponents => ({
+  streetAddress: form.permanent_street_address,
+  barangay: form.permanent_barangay,
+  cityMunicipality: form.permanent_city_municipality,
+  province: form.permanent_province,
+  postalCode: form.permanent_postal_code,
+});
 
-const isNotApplicableMiddleName = (value: string) => /^n\/a$/i.test(value.trim());
-
-const hasFullNameWord = (value: string) => value
-  .trim()
-  .split(/[^\p{L}]+/u)
-  .some((part) => part.length >= 2);
+const currentAddressFrom = (form: RegistrationForm): AddressComponents => ({
+  streetAddress: form.current_street_address,
+  barangay: form.current_barangay,
+  cityMunicipality: form.current_city_municipality,
+  province: form.current_province,
+  postalCode: form.current_postal_code,
+});
 
 const persistForm = (form: RegistrationForm) => {
   if (typeof window === "undefined") {
@@ -365,6 +375,7 @@ const buildSubmissionPayloads = ({
     level: _level,
     year_level: _yearLevel,
     same_as_permanent_address: _sameAsPermanentAddress,
+    has_no_middle_name: _hasNoMiddleName,
     profile_photo_media_id,
     profile_photo_path,
     profile_photo_file_name,
@@ -378,6 +389,10 @@ const buildSubmissionPayloads = ({
 
   const legacyPayload: TablesInsert<"admission"> = {
     ...legacyRest,
+    address: formatAddress(permanentAddressFrom(form)),
+    current_address: formatAddress(currentAddressFrom(form)),
+    middle_name: normalizeOptionalMiddleName(form.middle_name, form.has_no_middle_name),
+    suffix: normalizedSuffix(form.suffix),
     date_of_birth: form.date_of_birth ? formatLocalDate(form.date_of_birth) : null,
     age: form.age ? parseInt(form.age, 10) : null,
     monthly_income: form.monthly_income ? parseInt(form.monthly_income.replace(/,/g, ""), 10) : null,
@@ -513,6 +528,7 @@ const Register = () => {
     firstName: "",
     middleName: "",
     lastName: "",
+    suffix: "",
     dateOfBirth: "",
   });
   const academicCatalogQuery = useQuery({
@@ -524,20 +540,16 @@ const Register = () => {
     firstName: form.first_name.trim(),
     middleName: form.middle_name.trim(),
     lastName: form.last_name.trim(),
+    suffix: normalizedSuffix(form.suffix) ?? "",
     dateOfBirth: form.date_of_birth ? formatLocalDate(form.date_of_birth) : "",
-  }), [form.first_name, form.middle_name, form.last_name, form.date_of_birth]);
-  const hasFullNameForCheck = Boolean(nameCheckInput.firstName && nameCheckInput.middleName && nameCheckInput.lastName && nameCheckInput.dateOfBirth);
+  }), [form.first_name, form.middle_name, form.last_name, form.suffix, form.date_of_birth]);
+  const hasFullNameForCheck = Boolean(nameCheckInput.firstName && nameCheckInput.lastName && nameCheckInput.dateOfBirth);
   const checkDuplicateName = async (): Promise<DuplicateNameResponse> => {
-    const rpcClient = supabase as unknown as {
-      rpc: (
-        functionName: "registration_full_name_exists",
-        args: { p_first_name: string; p_middle_name: string; p_last_name: string; p_date_of_birth: string },
-      ) => Promise<{ data: boolean | null; error: Error | null }>;
-    };
-    const { data, error } = await rpcClient.rpc("registration_full_name_exists", {
+    const { data, error } = await supabase.rpc("registration_full_name_exists", {
       p_first_name: debouncedNameCheck.firstName,
       p_middle_name: debouncedNameCheck.middleName,
       p_last_name: debouncedNameCheck.lastName,
+      p_suffix: debouncedNameCheck.suffix,
       p_date_of_birth: debouncedNameCheck.dateOfBirth,
     });
 
@@ -550,7 +562,7 @@ const Register = () => {
   const duplicateNameQuery = useQuery({
     queryKey: ["duplicate-registration-name", debouncedNameCheck],
     queryFn: checkDuplicateName,
-    enabled: Boolean(debouncedNameCheck.firstName && debouncedNameCheck.middleName && debouncedNameCheck.lastName && debouncedNameCheck.dateOfBirth),
+    enabled: Boolean(debouncedNameCheck.firstName && debouncedNameCheck.lastName && debouncedNameCheck.dateOfBirth),
     retry: false,
     staleTime: 1000 * 30,
   });
@@ -558,10 +570,11 @@ const Register = () => {
     && debouncedNameCheck.firstName === nameCheckInput.firstName
     && debouncedNameCheck.middleName === nameCheckInput.middleName
     && debouncedNameCheck.lastName === nameCheckInput.lastName
+    && debouncedNameCheck.suffix === nameCheckInput.suffix
     && debouncedNameCheck.dateOfBirth === nameCheckInput.dateOfBirth;
   const duplicateNameExists = nameCheckMatchesCurrentInput && duplicateNameQuery.data?.exists === true;
   const duplicateNameChecking = hasFullNameForCheck && (!nameCheckMatchesCurrentInput || duplicateNameQuery.isFetching);
-  const middleNameError = form.middle_name.trim() && !isNotApplicableMiddleName(form.middle_name) && !hasFullNameWord(form.middle_name)
+  const middleNameError = !form.has_no_middle_name && form.middle_name.trim() && !hasFullMiddleName(form.middle_name)
     ? MIDDLE_NAME_INITIAL_ERROR
     : "";
 
@@ -598,7 +611,7 @@ const Register = () => {
 
   useEffect(() => {
     if (!hasFullNameForCheck) {
-      setDebouncedNameCheck({ firstName: "", middleName: "", lastName: "", dateOfBirth: "" });
+      setDebouncedNameCheck({ firstName: "", middleName: "", lastName: "", suffix: "", dateOfBirth: "" });
       return;
     }
 
@@ -642,8 +655,8 @@ const Register = () => {
   const setDate = (name: keyof RegistrationForm) => (val: Date | undefined) => {
     if (name === "date_of_birth" && val) {
       const age = calculateAge(val);
-      if (age < MIN_STUDENT_AGE) {
-        const message = `Student must be at least ${MIN_STUDENT_AGE} years old.`;
+      if (!isValidStudentBirthdate(val)) {
+        const message = `Student must be at least ${MIN_STUDENT_AGE} years old. Please check the birth year.`;
         setDateOfBirthError(message);
         toast.error(message);
         setForm((prev) => ({ ...prev, [name]: undefined, age: "" }));
@@ -659,17 +672,30 @@ const Register = () => {
       setForm((prev) => ({ ...prev, [name]: val }));
     }
   };
-  const setPermanentAddress = (value: string) =>
+  const setHasNoMiddleName = (checked: boolean) =>
     setForm((prev) => ({
       ...prev,
-      address: value,
-      current_address: prev.same_as_permanent_address ? value : prev.current_address,
+      has_no_middle_name: checked,
+      middle_name: checked ? "" : prev.middle_name,
+    }));
+  const setPermanentAddressPart = (name: "permanent_street_address" | "permanent_barangay" | "permanent_city_municipality" | "permanent_province" | "permanent_postal_code") => (value: string) =>
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(prev.same_as_permanent_address ? {
+        [name.replace("permanent_", "current_")]: value,
+      } : {}),
     }));
   const setSameAsPermanentAddress = (checked: boolean) =>
     setForm((prev) => ({
       ...prev,
       same_as_permanent_address: checked,
       current_address: checked ? prev.address : prev.current_address,
+      current_street_address: checked ? prev.permanent_street_address : prev.current_street_address,
+      current_barangay: checked ? prev.permanent_barangay : prev.current_barangay,
+      current_city_municipality: checked ? prev.permanent_city_municipality : prev.current_city_municipality,
+      current_province: checked ? prev.permanent_province : prev.current_province,
+      current_postal_code: checked ? prev.permanent_postal_code : prev.current_postal_code,
     }));
 
   const showSpouse = ["Married", "Widowed", "Separated", "Divorced"].includes(form.civil_status);
@@ -1012,8 +1038,13 @@ const Register = () => {
       return false;
     }
 
-    if (!form.first_name || !form.middle_name || !form.last_name || !form.date_of_birth || !form.gender || !selectedEducationLevel || !form.program || !form.level || !form.email) {
+    if (!form.first_name || !form.last_name || !form.date_of_birth || !form.gender || !selectedEducationLevel || !form.program || !form.level || !form.email) {
       toast.error("Please fill in all required fields.");
+      return false;
+    }
+
+    if (!isValidMiddleNameChoice(form.middle_name, form.has_no_middle_name)) {
+      toast.error("Enter the student's middle name or confirm that the student has no middle name.");
       return false;
     }
 
@@ -1022,8 +1053,8 @@ const Register = () => {
       return false;
     }
 
-    if (!isValidStudentAge(form.date_of_birth)) {
-      toast.error(`Student must be at least ${MIN_STUDENT_AGE} years old.`);
+    if (!isValidStudentBirthdate(form.date_of_birth)) {
+      toast.error(`Student must be at least ${MIN_STUDENT_AGE} years old. Please check the birth year.`);
       return false;
     }
 
@@ -1044,6 +1075,16 @@ const Register = () => {
 
     if (!form.facebook_link.trim()) {
       toast.error("Please enter your Facebook username, profile URL, or exact Facebook name.");
+      return false;
+    }
+
+    if (!hasRequiredAddressComponents(permanentAddressFrom(form))) {
+      toast.error("Permanent address requires a barangay, city or municipality, and province.");
+      return false;
+    }
+
+    if (!hasRequiredAddressComponents(currentAddressFrom(form))) {
+      toast.error("Current address requires a barangay, city or municipality, and province.");
       return false;
     }
 
@@ -1361,10 +1402,30 @@ const Register = () => {
           <FormSection title="Basic Information" description="Personal details of the student" icon={<User className="h-4 w-4" />}>
             <div className="form-grid">
               <TextField label="First Name" name="first_name" required value={form.first_name} onChange={set("first_name")} />
-              <TextField label="Middle Name" name="middle_name" required value={form.middle_name} onChange={set("middle_name")} error={middleNameError} />
+              <div className="space-y-2">
+                <TextField label="Middle Name (Optional)" name="middle_name" value={form.middle_name} onChange={set("middle_name")} disabled={form.has_no_middle_name} error={middleNameError} />
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="has_no_middle_name"
+                    checked={form.has_no_middle_name}
+                    onCheckedChange={(checked) => setHasNoMiddleName(checked === true)}
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="has_no_middle_name" className="cursor-pointer text-sm font-medium">
+                      I do not have a middle name
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {form.has_no_middle_name
+                        ? "Your registration will be saved without a middle name."
+                        : "Enter your full middle name, or check this box if you do not have one."}
+                    </p>
+                  </div>
+                </div>
+              </div>
               <TextField label="Last Name" name="last_name" required value={form.last_name} onChange={set("last_name")} />
-              <DateField label="Date of Birth" name="date_of_birth" required value={form.date_of_birth} onChange={setDate("date_of_birth")} />
-              <TextField label="Age" name="age" type="number" required value={form.age} onChange={set("age")} />
+              <SelectField label="Suffix" name="suffix" options={suffixOptions} value={form.suffix} onChange={set("suffix")} />
+              <DateField label="Date of Birth" name="date_of_birth" required value={form.date_of_birth} onChange={setDate("date_of_birth")} maxDate={latestValidBirthdate()} />
+              <TextField label="Age" name="age" type="number" required value={form.age} onChange={set("age")} readOnly />
               <TextField label="Place of Birth" name="place_of_birth" required value={form.place_of_birth} onChange={set("place_of_birth")} />
               {(dateOfBirthError || duplicateNameExists) && (
                 <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive sm:col-span-2 lg:col-span-3">
@@ -1391,18 +1452,23 @@ const Register = () => {
 
           {/* Address & Contact */}
           <FormSection title="Address & Contact" description="Where we can reach you" icon={<MapPin className="h-4 w-4" />}>
-            <div className="form-grid-2">
-              <TextField label="Permanent Address" name="address" required value={form.address} onChange={setPermanentAddress} />
-              <div className="space-y-2">
-                <TextField
-                  label="Current Address"
-                  name="current_address"
-                  required
-                  value={form.current_address}
-                  onChange={set("current_address")}
-                  disabled={form.same_as_permanent_address}
-                  placeholder={form.same_as_permanent_address ? "Copied from permanent address" : "Current address"}
-                />
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="space-y-3 rounded-lg border p-4">
+                <div>
+                  <p className="font-medium">Permanent Address</p>
+                  <p className="text-xs text-muted-foreground">Use Purok or Sitio if there is no formal street.</p>
+                </div>
+                <TextField label="House / Unit / Purok / Sitio / Street" name="permanent_street_address" value={form.permanent_street_address} onChange={setPermanentAddressPart("permanent_street_address")} placeholder="Optional" />
+                <TextField label="Barangay" name="permanent_barangay" required value={form.permanent_barangay} onChange={setPermanentAddressPart("permanent_barangay")} />
+                <TextField label="City / Municipality" name="permanent_city_municipality" required value={form.permanent_city_municipality} onChange={setPermanentAddressPart("permanent_city_municipality")} />
+                <TextField label="Province" name="permanent_province" required value={form.permanent_province} onChange={setPermanentAddressPart("permanent_province")} />
+                <TextField label="Postal Code" name="permanent_postal_code" value={form.permanent_postal_code} onChange={setPermanentAddressPart("permanent_postal_code")} placeholder="Optional" />
+              </div>
+              <div className="space-y-3 rounded-lg border p-4">
+                <div>
+                  <p className="font-medium">Current Address</p>
+                  <p className="text-xs text-muted-foreground">Where the student currently lives.</p>
+                </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="same_as_permanent_address"
@@ -1416,7 +1482,14 @@ const Register = () => {
                     Same as permanent address
                   </Label>
                 </div>
+                <TextField label="House / Unit / Purok / Sitio / Street" name="current_street_address" value={form.current_street_address} onChange={set("current_street_address")} disabled={form.same_as_permanent_address} placeholder={form.same_as_permanent_address ? "Copied from permanent address" : "Optional"} />
+                <TextField label="Barangay" name="current_barangay" required value={form.current_barangay} onChange={set("current_barangay")} disabled={form.same_as_permanent_address} />
+                <TextField label="City / Municipality" name="current_city_municipality" required value={form.current_city_municipality} onChange={set("current_city_municipality")} disabled={form.same_as_permanent_address} />
+                <TextField label="Province" name="current_province" required value={form.current_province} onChange={set("current_province")} disabled={form.same_as_permanent_address} />
+                <TextField label="Postal Code" name="current_postal_code" value={form.current_postal_code} onChange={set("current_postal_code")} disabled={form.same_as_permanent_address} placeholder={form.same_as_permanent_address ? "Copied from permanent address" : "Optional"} />
               </div>
+            </div>
+            <div className="form-grid-2 mt-6">
               <TextField label="Contact Number" name="contact" type="tel" required value={form.contact} onChange={set("contact")} />
               <TextField label="Email Address" name="email" type="email" required value={form.email} onChange={set("email")} />
               <div className="space-y-1.5">

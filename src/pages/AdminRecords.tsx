@@ -35,6 +35,7 @@ interface Student {
   first_name: string;
   last_name: string;
   middle_name: string | null;
+  suffix: string | null;
   email: string | null;
   education_level: string | null;
   department: string | null;
@@ -56,12 +57,22 @@ interface Student {
 }
 
 const fieldLabels: Record<string, string> = {
-  first_name: "First Name", last_name: "Last Name", middle_name: "Middle Name",
+  first_name: "First Name", last_name: "Last Name", middle_name: "Middle Name", suffix: "Suffix",
   date_of_birth: "Date of Birth", age: "Age", place_of_birth: "Place of Birth",
   gender: "Gender", civil_status: "Civil Status", spouse_name: "Spouse Name",
   nationality: "Nationality", religion: "Religion", tribe: "Tribe",
   vaccination_status: "Vaccination Status", address: "Permanent Address",
   current_address: "Current Address", contact: "Contact", email: "Email Address", facebook_link: "Facebook Profile",
+  permanent_street_address: "Permanent House / Street / Purok / Sitio",
+  permanent_barangay: "Permanent Barangay",
+  permanent_city_municipality: "Permanent City / Municipality",
+  permanent_province: "Permanent Province",
+  permanent_postal_code: "Permanent Postal Code",
+  current_street_address: "Current House / Street / Purok / Sitio",
+  current_barangay: "Current Barangay",
+  current_city_municipality: "Current City / Municipality",
+  current_province: "Current Province",
+  current_postal_code: "Current Postal Code",
   parent_guardian: "Primary Guardian", parent_guardian_relation: "Relation",
   parent_guardian_address: "Guardian Address", parent_guardian_contact: "Guardian Contact",
   sec_parent_guardian: "Secondary Guardian", sec_parent_guardian_relation: "Relation",
@@ -265,7 +276,7 @@ const AdminRecords = () => {
     student.level || student.year_level || "";
 
   const filtered = students.filter((student) => {
-    const name = `${student.first_name} ${student.middle_name || ""} ${student.last_name}`.toLowerCase();
+    const name = `${student.first_name} ${student.middle_name || ""} ${student.last_name} ${student.suffix || ""}`.toLowerCase();
     const studentEducationLevel = getStudentEducationLevel(student);
     const studentProgram = getStudentProgram(student);
     const studentLevel = getStudentLevel(student);
@@ -419,7 +430,7 @@ const AdminRecords = () => {
                 filtered.map((student) => (
                   <tr key={student.id} className="border-b border-border/50 hover:bg-muted/40 transition-colors">
                     <td className="py-3 px-3 font-medium text-foreground">
-                      {student.last_name}, {student.first_name} {student.middle_name || ""}
+                      {student.last_name}, {student.first_name} {student.middle_name || ""} {student.suffix || ""}
                     </td>
                     <td className="py-3 px-3 text-muted-foreground hidden md:table-cell">{getEducationLevelLabel(student.education_level || student.department) || "-"}</td>
                     <td className="py-3 px-3 text-muted-foreground hidden md:table-cell">{getStudentProgram(student) || "-"}</td>
@@ -444,13 +455,13 @@ const AdminRecords = () => {
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">
-            {selected && `${selected.first_name} ${selected.middle_name || ""} ${selected.last_name}`}
+            {selected && `${selected.first_name} ${selected.middle_name || ""} ${selected.last_name} ${selected.suffix || ""}`}
           </DialogTitle>
         </DialogHeader>
         {selected && (
           <div className="mt-2 space-y-6">
             {(() => {
-              const name = `${selected.first_name} ${selected.middle_name || ""} ${selected.last_name}`.replace(/\s+/g, " ").trim();
+              const name = `${selected.first_name} ${selected.middle_name || ""} ${selected.last_name} ${selected.suffix || ""}`.replace(/\s+/g, " ").trim();
               const educationLabel = getEducationLevelLabel(selected.education_level || selected.department) || "-";
               const programLabel = getStudentProgram(selected) || "-";
               const levelLabel = getStudentLevel(selected) || "-";
